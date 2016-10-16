@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Card game</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <script type="text/javascript" src="jquery-3.1.1.min.js"></script>
+    <script type="text/javascript" src="game.js"></script>
+    <script type="text/javascript" src="ui.js"></script>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="table">
+        <div class="corner" id="corner-top-left">
+                <div class="trump" id="trump"></div>
+                <div class="trump" id="trump-current"></div>
+        </div>
+        <div class="player" id="player-north">
+            <div class="button" id="button-north" onclick="seatMe(2)">Usiądź</div>
+            <div class="nick" id="nick-north">---</div>
+            <div class="hand" id="hand-north"></div>
+            <div class="tricks" id="tricks-north">-</div>
+        </div>
+        <div class="corner" id="corner-top-right"></div>
+        <div class="player" id="player-west">
+            <div class="button" id="button-west" onclick="seatMe(1)">Usiądź</div>
+            <div class="nick" id="nick-west">---</div>
+            <div class="hand" id="hand-west"></div>
+            <div class="tricks" id="tricks-west">-</div>
+        </div>
+        <div class="desk">
+            <div id="desk-west"></div>
+            <div id="desk-center">
+                <div id="desk-north"></div>
+                <div id="username-request">
+                    <label for="username">Nick:</label>
+                    <input type="text" name="username" id="username">
+                </div>
+                <div class="button" id="ready-button">Start</div>
+                <div class="number-spinner" style="display: none;">
+                    <div class="number-button" id="number-decr">-</div>
+                    <div class="number-value" id="number-value">0</div>
+                    <div class="number-button" id="number-incr">+</div>
+                    <div class="number-confirm">OK</div>
+                </div>
+                <div id="waiting">Oczekiwanie na start...</div>
+                <div id="desk-south"></div>
+            </div>
+            <div id="desk-east"></div>
+        </div>
+        <div class="player" id="player-east">
+            <div class="button" id="button-east" onclick="seatMe(3)">Usiądź</div>
+            <div class="nick" id="nick-east">---</div>
+            <div class="hand" id="hand-east"></div>
+            <div class="tricks" id="tricks-east">-</div>
+        </div>
+        <!-- <div class="corner" id="corner-bottom-left"></div> -->
+        <div class="player" id="player-south">
+            <div class="button" id="button-south" onclick="seatMe(0)">Usiądź</div>
+            <div class="nick" id="nick-south">---</div>
+            <div class="hand" id="hand-south"></div>
+            <div class="tricks" id="tricks-south">-</div>
+        </div>
+        <!-- <div class="corner" id="corner-bottom-right"></div> -->
+    </div><div class="sidebar">
+        <div class="scorecard">
+            <h3>Wyniki</h3>
+        </div>
+        <div class="chat">
+            <h3>Czat</h3>
+            <div id="chat-history"></div>
+            <input type="text" name="chat-input" id="chat-input">
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
