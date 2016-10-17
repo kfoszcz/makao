@@ -12,8 +12,9 @@ function compareCard(a, b) {
         return Card.suitOrder[a.suit] - Card.suitOrder[b.suit];
 }
 
-function sortCards(hand) {
+Card.sortCards = function(hand) {
     hand.sort(compareCard);
+    return hand;
 }
 
 function shuffleDeck(deck) {

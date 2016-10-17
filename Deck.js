@@ -1,10 +1,12 @@
+var Card = require('./Card.js');
+
 function Deck(quantity) {
 	this.marker = 0;
 	this.deck = [];
 	while (quantity--)
 	    for (var i = 0; i < 4; i++)
 	        for (var j = 2; j < 15; j++)
-	            deck.push(new Card(i, j));
+	            this.deck.push(new Card(i, j));
 }
 
 Deck.prototype.shuffle = function() {
@@ -19,12 +21,12 @@ Deck.prototype.shuffle = function() {
 }
 
 Deck.prototype.draw = function(amount) {
-	marker += amount;
-	return this.deck.slice(marker - amount, marker);
+	this.marker += amount;
+	return this.deck.slice(this.marker - amount, this.marker);
 }
 
 Deck.prototype.size = function() {
-	return this.deck.length - marker;
+	return this.deck.length - this.marker;
 }
 
 module.exports = Deck;

@@ -6,6 +6,7 @@ var striptags = require('striptags');
 var Table = require('./Table.js');
 var Card = require('./Card.js');
 var Player = require('./Player.js');
+var Game = require('./Game.js')
 
 app.use(express.static(__dirname + '/public'));
 
@@ -37,6 +38,14 @@ function executeCmd(socket, cmd, arg) {
 		default:
 			socket.emit('chatReceive', 'Unknown command');
 	}
+}
+
+function newDeal() {
+	table.game.dealCards();
+	var player = null;
+	while (player = table.game.playerIter())
+		player.socket.emit('handReceive', player.hand);
+	io.emit('trumpReceive', table.game.topCard);
 }
 
 io.on('connection', function(socket){
@@ -75,6 +84,25 @@ io.on('connection', function(socket){
 			// start game
 			io.emit('chatReceive', 'Zaczynamy grę. Powodzenia!');
 			io.emit('startGame');
+			table.game = new Game(table.players);
+			// console.log(table.game);
+			table.game.init();
+			newDeal();
+			table.game.getCurrentPlayer().socket.emit('moveRequest', table.game.phase);
+		}
+	});
+
+	socket.on('moveSend', function(type, value){
+		if (socket.id != table.game.getCurrentPlayer().id)
+			return false;
+		if (type != table.game.phase)
+			return false;
+		var current = table.game.current;
+		var result = table.game.move(type, value);
+		socket.emit('moveOK', result);
+		if (result) {
+			io.emit('moveReceive', current, type, value);
+			table.game.getCurrentPlayer().socket.emit('moveRequest', table.game.phase);
 		}
 	});
 

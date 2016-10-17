@@ -1,6 +1,10 @@
+var Player = require('./Player.js');
+var Deck = require('./Deck.js');
+var Card = require('./Card.js');
+
 function Game(players) {
 	this.options = {
-		'deal_start': 1,
+		'deal_start': 8,
 		'deal_end': 24,
 		'marriages': true,
 		'half_marriages': true,
@@ -23,16 +27,30 @@ function Game(players) {
 	this.current = null;
 	this.topCard = null;
 	this.paused = true;
-	this.deck = new Deck(options.decks);
+	this.deck = new Deck(this.options.decks);
 	this.trump = null;
 	this.board = [[], [], [], []];
 	this.best = null;
 	this.bestValue = 0;
 	this.players = players;
+	this.iter = 0;
 }
 
 Game.PHASE_BIDDING = 0;
 Game.PHASE_PLAY = 1;
+
+Game.prototype.playerIter = function() {
+	var result = this.players[this.seats[this.iter]];
+	if (++this.iter > this.playersCount) {
+		this.iter = 0;
+		return null;
+	}
+	return result;
+}
+
+Game.prototype.getCurrentPlayer = function() {
+	return this.players[this.current];
+}
 
 Game.prototype.leadingSuit = function() {
 	return this.board[this.leader][0].suit;
@@ -59,13 +77,13 @@ Game.prototype.init = function() {
 	this.deck.shuffle();
 }
 
-Game.prototype.deal = function() {
+Game.prototype.dealCards = function() {
 	var cardsNeeded = this.playersCount * this.deal + 1;
 	if (this.options.always_shuffle || cardsNeeded > this.deck.size())
 		this.deck.shuffle();
 
 	for (var i = 0; i < this.playersCount; i++)
-		players[this.seats[i]].hand = sortCards(this.deck.draw(this.deal));
+		this.players[this.seats[i]].hand = Card.sortCards(this.deck.draw(this.deal));
 
 	this.topCard = this.deck.draw(1)[0];
 	this.trump = this.topCard.suit;
@@ -84,6 +102,22 @@ Game.prototype.boardValue = function(cards) {
 	return result;
 }
 
+Game.prototype.move = function(type, value) {
+	if (type == Game.PHASE_BIDDING) {
+		this.players[this.current].declared = value;
+		this.current = this.nextPlayer(this.current);
+		if (this.current == this.leader)
+			this.phase = Game.PHASE_PLAY;
+		return true;
+	}
+	else {
+		return false;
+		if (!this.validMove(value))
+			return false;
+		// this.players[this.current].removeCards(value);
+	}
+}
+
 Game.prototype.onlySuit = function(cards, suit) {
 	for (var i = 0; i < cards.length; i++)
 		if (cards[i].suit != suit)
@@ -98,6 +132,29 @@ Game.prototype.sameCards = function(cards) {
 		if (cards[i] !== cards[0])
 			return 0;
 	return 1;
+}
+
+Player.prototype.suitCount = function(cards, suit) {
+	var result = 0;
+	for (var i = 0; i < cards.length; i++)
+		if (cards[i].suit == suit)
+			result++;
+	return result;
+}
+
+Game.prototype.validMove = function(cards) {
+	// if cards not in hand, move is invalid
+	if (!this.players[this.current].inHand(cards))
+		return false;
+
+	// if current player is first to act, move is always valid
+	if (this.current == this.leader)
+		return true;
+
+	// move is valid if all played cards match suit that was led
+	// or a player played all his cards matching leading suit and some other
+	var suited = this.suitCount(cards, this.leadingSuit());
+	return suited == cards.length || suited == this.players[this.current].suitCount(this.leadingSuit());
 }
 
 module.exports = Game;

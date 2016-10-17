@@ -7,8 +7,8 @@ function Player(id, name, seat, socket) {
     this.connected = true;
 
     this.hand = [];
-    this.declared = null;
-    this.tricks = null;
+    this.declared = 0;
+    this.tricks = 0;
     this.scores = [];
     this.cumulated = [];
     this.sequence = null;

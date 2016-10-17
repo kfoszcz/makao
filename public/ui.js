@@ -55,6 +55,9 @@ var seatButtons = [];
 var playerCount = 0;
 var cards = [];
 var hands = [];
+var moveType = null;
+var moveValue = null;
+var tricks = [];
 
 function seat(place) {
     return (4 + place - mySeat) % 4;
@@ -149,14 +152,44 @@ function startGame() {
     $('div.tricks').show();
 }
 
-function receiveHand(hand) {
+function handReceive(hand) {
     for (var i = 0; i < hand.length; i++)
         $('#hand-south').append(create_card(hand[i]));
-    var len = min(hand.length, 10);
+    var len = Math.min(hand.length, 10);
     for (var i = 0; i < len; i++) {
         $('#hand-west').append(create_card());
         $('#hand-north').append(create_card());
         $('#hand-east').append(create_card());
+    }
+}
+
+function trumpReceive(card) {
+    $('#trump').append(create_card(card));
+}
+
+function moveRequest(type) {
+    if (type == 0) {
+        $('.number-spinner').show();
+    }
+}
+
+function moveSend(type, value) {
+    moveType = type;
+    moveValue = value;
+    socket.emit('moveSend', type, value);
+}
+
+function moveOK(result) {
+    if (!result)
+        return;
+    if (moveType == 0) {
+        $('.number-spinner').hide();
+    }
+}
+
+function moveReceive(player, type, value) {
+    if (type == 0) {
+        tricks[seat(player)].text(value);
     }
 }
 
@@ -185,6 +218,11 @@ $(document).ready(function(){
     });
 
     socket.on('chatReceive', chatReceive);
+    socket.on('handReceive', handReceive);
+    socket.on('moveReceive', moveReceive);
+    socket.on('moveRequest', moveRequest);
+    socket.on('trumpReceive', trumpReceive);
+    socket.on('moveOK', moveOK);
 
     socket.on('startGame', startGame);
 
@@ -205,6 +243,11 @@ $(document).ready(function(){
     nicks.push($('#nick-north'));
     nicks.push($('#nick-east'));
 
+    tricks.push($('#tricks-south'));
+    tricks.push($('#tricks-west'));
+    tricks.push($('#tricks-north'));
+    tricks.push($('#tricks-east'));
+
     seatButtons.push($('#button-south'));
     seatButtons.push($('#button-west'));
     seatButtons.push($('#button-north'));
@@ -219,6 +262,11 @@ $(document).ready(function(){
     $('#number-incr').click(declareIncrease);
     $('#number-decr').click(declareDecrease);
     $('#ready-button').click(playerReady);
+
+    $('#number-ok').click(function(){
+        var value = parseInt($('#number-value').text());
+        moveSend(0, value);
+    });
 
     /*var trump_box = $("#trump");
     var trump_cur = $("#trump-current");
