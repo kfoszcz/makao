@@ -31,9 +31,9 @@
             <div class="tricks" id="tricks-west">-</div>
         </div>
         <div class="desk">
-            <div id="desk-west"></div>
+            <div class="desk-board" id="desk-west"></div>
             <div id="desk-center">
-                <div id="desk-north"></div>
+                <div class="desk-board" id="desk-north"></div>
                 <div id="username-request">
                     <label for="username">Nick:</label>
                     <input type="text" name="username" id="username">
@@ -46,9 +46,9 @@
                     <div class="number-confirm" id="number-ok">OK</div>
                 </div>
                 <div id="waiting">Oczekiwanie na start...</div>
-                <div id="desk-south"></div>
+                <div class="desk-board" id="desk-south"></div>
             </div>
-            <div id="desk-east"></div>
+            <div class="desk-board" id="desk-east"></div>
         </div>
         <div class="player" id="player-east">
             <div class="button" id="button-east" onclick="seatMe(3)">Usiądź</div>
@@ -67,6 +67,9 @@
     </div><div class="sidebar">
         <div class="scorecard">
             <h3>Wyniki</h3>
+            <div class="score-window">
+                <div class="score-table"></div>
+            </div>
         </div>
         <div class="chat">
             <h3>Czat</h3>

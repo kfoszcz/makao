@@ -9,11 +9,12 @@ function create_card(card, my) {
     }
     var colors = ['black', 'red', 'red', 'black', 'facedown'];
     var suits = ['&clubs;', '&diams;', '&hearts;', '&spades;', '&nbsp;'];
-    var values = ['', '&nbsp;', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+    var values = ['', '&nbsp;', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
     var result = document.createElement('div');
     result.className = 'card ' + colors[suit];
     if (my) {
         result.className += ' card-clickable';
+        result.setAttribute('value', suit + '-' + value);
     }
     var topleft = document.createElement('div');
     var bottomright = document.createElement('div');
@@ -30,6 +31,24 @@ function create_card(card, my) {
     result.appendChild(central);
     result.appendChild(bottomright);
     return result;
+}
+
+function createScoreHeader() {
+    $('.score-table').append('<div class="score-row score-header"></div>');
+    $('.score-header').append('<div class="score-index">#</div>');
+    for (var i = 0; i < 4; i++)
+        if (names[i])
+            $('.score-header').append('<div class="score-item">' + names[i] + '</div>');
+}
+
+function appendScoreRow(scores) {
+    var row = $('<div class="score-row"></div>');
+    row.append('<div class="score-index">' + dealNumber + '</div>');
+    for (var i = 0; i < 4; i++)
+        if (names[i])
+            row.append('<div class="score-item">' + scores[i] + '</div>');
+    $('.score-table').append(row);
+    $('.score-window').scrollTop($('.score-window')[0].scrollHeight);
 }
 
 function declareIncrease() {
@@ -58,6 +77,15 @@ var hands = [];
 var moveType = null;
 var moveValue = null;
 var tricks = [];
+var board = [];
+var declared = [0, 0, 0, 0];
+var currentPlayer = 0;
+var selectedCards = [];
+var focused = true;
+var dealNumber = 0;
+var handSizes = [0, 0, 0, 0];
+
+var snd = new Audio('notification.mp3');
 
 function seat(place) {
     return (4 + place - mySeat) % 4;
@@ -147,27 +175,84 @@ function playerReady() {
 }
 
 function startGame() {
+    $('.score-table').empty();
     $('#waiting').hide();
-    $('div.hand').show();
-    $('div.tricks').show();
+    for (var i = 0; i < 4; i++) {
+        if (names[i]) {
+            hands[seat(i)].show();
+            tricks[seat(i)].show();
+        }
+    }
+    createScoreHeader();
+}
+
+function endGame() {
+    nicks[currentPlayer].removeClass('current-player');
+    for (var i = 0; i < 4; i++) {
+        if (names[i]) {
+            hands[seat(i)].hide();
+            tricks[seat(i)].hide();
+        }
+    }
+    $('#ready-button').show();
+    $('#trump').empty();
 }
 
 function handReceive(hand) {
+    dealNumber = hand.length;
     for (var i = 0; i < hand.length; i++)
-        $('#hand-south').append(create_card(hand[i]));
+        $('#hand-south').append(create_card(hand[i], true));
+    $('div.card-clickable').click(cardClicked);
     var len = Math.min(hand.length, 10);
-    for (var i = 0; i < len; i++) {
-        $('#hand-west').append(create_card());
-        $('#hand-north').append(create_card());
-        $('#hand-east').append(create_card());
+    for (var i = 0; i < 4; i++)
+        if (names[i] && i != mySeat)
+            for (var j = 0; j < len; j++) {
+                hands[seat(i)].append(create_card());
+                declared[seat(i)] = 0;
+                handSizes[seat(i)] = dealNumber;
+            }
+    tricksClear();
+}
+
+function cardClicked() {
+    if (currentPlayer != 0)
+        return;
+    // $(this).css('top', -15 - parseInt($(this).css('top')));
+    selectedCards = [];
+    selectedCards.push($(this));
+    // console.log(selectedCards);
+    var toSend = [];
+    for (var i = 0; i < selectedCards.length; i++) {
+        var val = selectedCards[i].attr('value').split('-', 2);
+        toSend.push(new Card(parseInt(val[0]), parseInt(val[1])));
     }
+    moveSend(1, toSend);
+}
+
+function tricksUpdate(player, value) {
+    player = seat(player);
+    tricks[player].text(value + ' / ' + declared[player]);
+}
+
+function tricksInit() {
+    for (var i = 0; i < 4; i++)
+        if (names[i])
+            tricks[seat(i)].text('0 / ' + declared[seat(i)]);
+}
+
+function tricksClear() {
+    for (var i = 0; i < 4; i++)
+        tricks[i].text('-');
 }
 
 function trumpReceive(card) {
-    $('#trump').append(create_card(card));
+    $('#trump').html(create_card(card));
 }
 
 function moveRequest(type) {
+    updateCurrentPlayer(mySeat);
+    if (!focused)
+        snd.play();
     if (type == 0) {
         $('.number-spinner').show();
     }
@@ -184,13 +269,40 @@ function moveOK(result) {
         return;
     if (moveType == 0) {
         $('.number-spinner').hide();
+        tricks[0].text(moveValue);
+        declared[0] = moveValue;
+    }
+    else {
+        board[0].append(selectedCards);
+        selectedCards = [];
     }
 }
 
 function moveReceive(player, type, value) {
+    player = seat(player)
     if (type == 0) {
-        tricks[seat(player)].text(value);
+        tricks[player].text(value);
+        declared[player] = value;
     }
+    else {
+        for (var i = 0; i < value.length; i++) {
+            board[player].append(create_card(value[i]));
+            handSizes[player]--;
+            if (handSizes[player] < 10)
+                hands[player].children().last().remove();
+        }
+    }
+}
+
+function updateCurrentPlayer(player) {
+    player = seat(player);
+    nicks[currentPlayer].removeClass('current-player');
+    nicks[player].addClass('current-player');
+    currentPlayer = player;
+}
+
+function clearBoard() {
+    $('.desk-board').empty();
 }
 
 $(document).ready(function(){
@@ -201,9 +313,27 @@ $(document).ready(function(){
         seatMe(myPreviousSeat);
     });
 
+    $(window).blur(function(){
+        focused = false;
+    });
+
+    $(window).focus(function(){
+        focused = true;
+    });
+
     socket.on('tableStatus', updateAllNames);
 
     socket.on('updateTable', updateTable);
+
+    socket.on('tricksUpdate', tricksUpdate);
+
+    socket.on('tricksInit', tricksInit);
+
+    socket.on('updateCurrentPlayer', updateCurrentPlayer);
+
+    socket.on('clearBoard', clearBoard);
+
+    socket.on('scoresUpdate', appendScoreRow);
 
     socket.on('seatResponse', function(response){
         if (response) {
@@ -225,6 +355,7 @@ $(document).ready(function(){
     socket.on('moveOK', moveOK);
 
     socket.on('startGame', startGame);
+    socket.on('endGame', endGame);
 
     $('#chat-input').on('keyup', function(e){
         if (e.keyCode == 13) {
@@ -233,10 +364,10 @@ $(document).ready(function(){
         }
     });
 
-    hands.push(document.getElementById('hand-south'));
-    hands.push(document.getElementById('hand-west'));
-    hands.push(document.getElementById('hand-north'));
-    hands.push(document.getElementById('hand-east'));
+    hands.push($('#hand-south'));
+    hands.push($('#hand-west'));
+    hands.push($('#hand-north'));
+    hands.push($('#hand-east'));
 
     nicks.push($('#nick-south'));
     nicks.push($('#nick-west'));
@@ -253,6 +384,11 @@ $(document).ready(function(){
     seatButtons.push($('#button-north'));
     seatButtons.push($('#button-east'));
 
+    board.push($('#desk-south'));
+    board.push($('#desk-west'));
+    board.push($('#desk-north'));
+    board.push($('#desk-east'));
+
     $('#number-value').on('wheel', function(e){
         var delta = e.originalEvent.deltaY;
         if (delta > 0) declareDecrease();
@@ -264,43 +400,10 @@ $(document).ready(function(){
     $('#ready-button').click(playerReady);
 
     $('#number-ok').click(function(){
-        var value = parseInt($('#number-value').text());
-        moveSend(0, value);
+        if (currentPlayer == 0) {
+            var value = parseInt($('#number-value').text());
+            moveSend(0, value);
+        }
     });
 
-    /*var trump_box = $("#trump");
-    var trump_cur = $("#trump-current");
-    trump_box.append(create_card(trump));
-    trump_cur.append(create_card(new Card(trump.suit, 1)));
-
-    $('#desk-south').append(create_card(new Card(1, 2)));
-    $('#desk-south').append(create_card(new Card(1, 2)));
-    $('#desk-south').append(create_card(new Card(1, 2)));
-    // $('#desk-south').append(create_card(new Card(1, 2)));
-
-    $('#desk-west').append(create_card(new Card(1, 3)));
-    $('#desk-west').append(create_card(new Card(0, 9)));
-    $('#desk-west').append(create_card(new Card(3, 10)));
-    // $('#desk-west').append(create_card(new Card(1, 3)));
-
-    $('#desk-north').append(create_card(new Card(1, 4)));
-    $('#desk-north').append(create_card(new Card(1, 4)));
-    $('#desk-north').append(create_card(new Card(1, 4)));
-    // $('#desk-north').append(create_card(new Card(1, 4)));
-
-    $('#desk-east').append(create_card(new Card(1, 5)));
-    $('#desk-east').append(create_card(new Card(1, 5)));
-    $('#desk-east').append(create_card(new Card(1, 5)));
-    // $('#desk-east').append(create_card(new Card(1, 5)));
-    
-    for (var i = 0; i < hand.length; i++)
-        hands[0].appendChild(create_card(hand[i], true));
-    for (var p = 1; p < 4; p++)
-        for (var i = 0; i < hand.length; i++)
-            hands[p].appendChild(create_card());
-    // myhand.appendChild(create_card());*/
-
-    $('div.card-clickable').click(function(){
-        $(this).css('top', -15 - parseInt($(this).css('top')));
-    });
 })

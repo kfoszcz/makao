@@ -4,8 +4,8 @@ var Card = require('./Card.js');
 
 function Game(players) {
 	this.options = {
-		'deal_start': 8,
-		'deal_end': 24,
+		'deal_start': 1,
+		'deal_end': 16,
 		'marriages': true,
 		'half_marriages': true,
 		'always_shuffle': false,
@@ -34,10 +34,17 @@ function Game(players) {
 	this.bestValue = 0;
 	this.players = players;
 	this.iter = 0;
+	this.request = 0;
+	this.running = false;
 }
 
 Game.PHASE_BIDDING = 0;
 Game.PHASE_PLAY = 1;
+
+Game.NEW_ORBIT = 1;
+Game.NEW_DEAL = 2;
+Game.FIRST_ORBIT = 4;
+Game.END_GAME = 8;
 
 Game.prototype.playerIter = function() {
 	var result = this.players[this.seats[this.iter]];
@@ -56,8 +63,7 @@ Game.prototype.leadingSuit = function() {
 	return this.board[this.leader][0].suit;
 }
 
-Game.prototype.nextPlayer = function() {
-	var index = this.current;
+Game.prototype.nextPlayer = function(index) {
 	do {
 		index = (index + 1) % 4;
 	} while (!this.players[index]);
@@ -74,7 +80,9 @@ Game.prototype.init = function() {
 	this.dealer = this.seats[rnd];
 	this.leader = this.nextPlayer(this.dealer);
 	this.current = this.leader;
+	this.best = this.leader;
 	this.deck.shuffle();
+	this.running = true;
 }
 
 Game.prototype.dealCards = function() {
@@ -104,18 +112,80 @@ Game.prototype.boardValue = function(cards) {
 
 Game.prototype.move = function(type, value) {
 	if (type == Game.PHASE_BIDDING) {
+		var player = null;
+		while (player = this.playerIter())
+			player.tricks = 0;
 		this.players[this.current].declared = value;
 		this.current = this.nextPlayer(this.current);
-		if (this.current == this.leader)
+		if (this.current == this.leader) {
 			this.phase = Game.PHASE_PLAY;
+		}
 		return true;
 	}
 	else {
-		return false;
 		if (!this.validMove(value))
 			return false;
-		// this.players[this.current].removeCards(value);
+
+		if (this.current == this.leader && this.players[this.current].hand.length == this.deal)
+			this.request |= Game.FIRST_ORBIT;
+
+		this.players[this.current].removeCards(value);
+		this.board[this.current] = value;
+		var val = this.boardValue(value);
+		if (val > this.bestValue) {
+			this.bestValue = val;
+			this.best = this.current;
+		}
+
+		this.current = this.nextPlayer(this.current);
+		if (this.current == this.leader) {
+			this.players[this.best].tricks += this.board[this.best].length;
+			this.current = this.best;
+			this.leader = this.best;
+			this.bestValue = 0;
+			for (var i = 0; i < 4; i++)
+				this.board[i] = [];
+			this.request |= Game.NEW_ORBIT;
+
+			if (this.players[this.leader].hand.length == 0) {
+				this.phase = Game.PHASE_BIDDING;
+				this.deal++;
+				this.dealer = this.nextPlayer(this.dealer);
+				this.current = this.nextPlayer(this.dealer);
+				this.leader = this.current;
+				this.request |= Game.NEW_DEAL;
+				var player = null;
+				while (player = this.playerIter())
+					player.addScore(this.calculateScore(player));
+				if (this.deal > this.options.deal_end) {
+					this.request |= Game.END_GAME;
+				}
+			}
+		}
+
+		return true;
 	}
+}
+
+Game.prototype.calculateScore = function(player) {
+	if (player.declared === player.tricks)
+		return this.options.win_value + player.tricks;
+	else if (this.options.handicap && Math.abs(player.declared - player.tricks) === 1)
+		return Math.ceil((this.options.win_value + player.tricks) / 2);
+	else
+		return 0;
+}
+
+Game.prototype.getScores = function() {
+	var result = [0, 0, 0, 0];
+	for (var i = 0; i < 4; i++)
+		if (this.players[i])
+			result[i] = this.players[i].cumulated.slice(-1)[0];
+	return result;
+}
+
+Game.prototype.getTrickWinner = function() {
+	return this.players[this.best];
 }
 
 Game.prototype.onlySuit = function(cards, suit) {
@@ -134,7 +204,7 @@ Game.prototype.sameCards = function(cards) {
 	return 1;
 }
 
-Player.prototype.suitCount = function(cards, suit) {
+Game.prototype.suitCount = function(cards, suit) {
 	var result = 0;
 	for (var i = 0; i < cards.length; i++)
 		if (cards[i].suit == suit)
@@ -144,8 +214,10 @@ Player.prototype.suitCount = function(cards, suit) {
 
 Game.prototype.validMove = function(cards) {
 	// if cards not in hand, move is invalid
-	if (!this.players[this.current].inHand(cards))
+	if (!this.players[this.current].inHand(cards)) {
+		console.log('Not in hand!');
 		return false;
+	}
 
 	// if current player is first to act, move is always valid
 	if (this.current == this.leader)

@@ -3,6 +3,10 @@ function Card(suit, rank) {
     this.rank = rank;
 }
 
+Card.prototype.equals = function(other) {
+    return this.suit === other.suit && this.rank === other.rank;
+}
+
 Card.suitOrder = [3, 2, 0, 1];
 
 function compareCard(a, b) {

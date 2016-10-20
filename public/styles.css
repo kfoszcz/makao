@@ -117,6 +117,13 @@ div.button {
     -webkit-user-select: none;
 }
 
+div.current-player {
+    animation: blinker 2s cubic-bezier(1, 0, 0, 1) infinite;
+}
+@keyframes blinker {
+    50% { opacity: 0; }
+}
+
 div#ready-button {
     display: none;
 }
@@ -326,4 +333,66 @@ div.red {
 div.facedown {
     background-image: url('72x112.jpg');
     color: rgba(0, 0, 0, 0);
+}
+
+/* score card */
+
+div.scorecard {
+    display: flex;
+    flex-direction: column;
+}
+
+div.score-table {
+    display: table;
+    table-layout: fixed;
+    width: 100%;
+    font-size: 0.6em;
+    color: white;
+    border-collapse: collapse;
+}
+
+div.score-window {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+}
+
+div.score-window::-webkit-scrollbar {
+    width: 5px;
+}
+ 
+div.score-window::-webkit-scrollbar-track {
+    -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+}
+ 
+div.score-window::-webkit-scrollbar-thumb {
+    background-color: yellow;
+    outline: 1px solid slategrey;
+}
+
+div.score-header {
+    font-weight: bold;
+}
+
+div.score-row {
+    display: table-row;
+}
+
+div.score-row:hover {
+    display: table-row;
+    background: #da4;
+}
+
+div.score-index {
+    border-bottom: 1px blue solid;
+    border-collapse: collapse;
+    display: table-cell;
+    width: 30px;
+}
+
+div.score-item {
+    border-bottom: 1px blue solid;
+    border-left: 1px blue solid;
+    border-collapse: collapse;
+    display: table-cell;
 }

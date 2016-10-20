@@ -18,7 +18,7 @@ Player.prototype.inHand = function(cards) {
 	// cards and this.hand must be sorted!
 	var j = 0;
 	for (var i = 0; i < this.hand.length; i++) {
-		if (this.hand[i] === cards[j])
+		if (this.hand[i].equals(cards[j]))
 			j++;
 		if (j >= cards.length)
 			return true;
@@ -28,10 +28,33 @@ Player.prototype.inHand = function(cards) {
 
 Player.prototype.suitCount = function(suit) {
 	var result = 0;
-	for (var i = 0; i < hand.length; i++)
-		if (hand[i].suit == suit)
+	for (var i = 0; i < this.hand.length; i++)
+		if (this.hand[i].suit == suit)
 			result++;
 	return result;
+}
+
+Player.prototype.removeCards = function(cards) {
+	// cards and this.hand must be sorted!
+	var j = 0;
+	var newHand = [];
+	var compare = true;
+	for (var i = 0; i < this.hand.length; i++) {
+		if (compare && this.hand[i].equals(cards[j]))
+			j++;
+		else
+			newHand.push(this.hand[i]);
+
+		if (j >= cards.length)
+			compare = false;
+	}
+	this.hand = newHand;
+}
+
+Player.prototype.addScore = function(score) {
+	this.scores.push(score);
+	var lastCumulated = (this.cumulated.length > 0) ? this.cumulated.slice(-1)[0] : 0;
+	this.cumulated.push(lastCumulated + score);
 }
 
 module.exports = Player;

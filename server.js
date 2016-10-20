@@ -8,6 +8,8 @@ var Card = require('./Card.js');
 var Player = require('./Player.js');
 var Game = require('./Game.js')
 
+var locked = false;
+
 app.use(express.static(__dirname + '/public'));
 
 app.get('/', function(req, res){
@@ -46,6 +48,11 @@ function newDeal() {
 	while (player = table.game.playerIter())
 		player.socket.emit('handReceive', player.hand);
 	io.emit('trumpReceive', table.game.topCard);
+}
+
+function requestMove() {
+	table.game.getCurrentPlayer().socket.emit('moveRequest', table.game.phase);
+	table.game.getCurrentPlayer().socket.broadcast.emit('updateCurrentPlayer', table.game.current);
 }
 
 io.on('connection', function(socket){
@@ -88,12 +95,14 @@ io.on('connection', function(socket){
 			// console.log(table.game);
 			table.game.init();
 			newDeal();
-			table.game.getCurrentPlayer().socket.emit('moveRequest', table.game.phase);
+			requestMove();
 		}
 	});
 
 	socket.on('moveSend', function(type, value){
-		if (socket.id != table.game.getCurrentPlayer().id)
+		// if (type == 1)
+		// 	console.log('Received move: ' + value[0].suit + ' ' + value[0].rank);
+		if (socket.id != table.game.getCurrentPlayer().id || locked)
 			return false;
 		if (type != table.game.phase)
 			return false;
@@ -101,8 +110,43 @@ io.on('connection', function(socket){
 		var result = table.game.move(type, value);
 		socket.emit('moveOK', result);
 		if (result) {
-			io.emit('moveReceive', current, type, value);
-			table.game.getCurrentPlayer().socket.emit('moveRequest', table.game.phase);
+			var moveTimeout = 0;
+			socket.broadcast.emit('moveReceive', current, type, value);
+			if (table.game.request & Game.FIRST_ORBIT) {
+				io.emit('tricksInit');
+			}
+			if (table.game.request & Game.NEW_ORBIT) {
+				locked = true;
+				moveTimeout = 1000;
+				io.emit('tricksUpdate', table.game.best, table.game.getTrickWinner().tricks);
+				setTimeout(function(){
+					io.emit('clearBoard');
+					locked = false;
+				}, 1000);
+			}
+			if (table.game.request & Game.END_GAME) {
+				io.emit('scoresUpdate', table.game.getScores());
+				locked = true;
+				setTimeout(function(){
+					io.emit('endGame');
+					io.emit('chatReceive', 'Koniec gry :)');
+					table.game.running = false;
+					locked = false;
+				}, 2000);
+				table.game.request = 0;
+				return;
+			}
+			if (table.game.request & Game.NEW_DEAL) {
+				io.emit('scoresUpdate', table.game.getScores());
+				locked = true;
+				moveTimeout = 2000;
+				setTimeout(function(){
+					newDeal();
+					locked = false;
+				}, 2000);
+			}
+			setTimeout(requestMove, moveTimeout);
+			table.game.request = 0;
 		}
 	});
 

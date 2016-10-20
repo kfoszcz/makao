@@ -24,6 +24,8 @@ Table.prototype.findPlayerByName = function(playerName) {
 Table.prototype.addPlayer = function(seat, player) {
     if (this.findPlayerById(player.id) || this.findPlayerByName(player.name))
         return false;
+    if (this.game && this.game.running)
+        return false;
     if (seat >= 0 && seat < 4) {
         if (this.players[seat] != null)
             return false;
