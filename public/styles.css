@@ -239,10 +239,16 @@ div#chat-history::-webkit-scrollbar-thumb {
     outline: 1px solid slategrey;
 }
 
+span.chat-hand {
+    color: white;
+    font-style: normal;
+}
+
 /* hand styles */
 div.hand {
     display: none; 
     overflow-y: hidden;
+    min-height: 112px;
 }
 
 div#hand-south, div#hand-north {
@@ -284,12 +290,16 @@ div.card-clickable {
     margin-left: -56px;
 }
 
-div.card-clickable:hover, div.card-clickable.hovered {
+div.card-clickable.hovered {
     background: #edf;
     top: -15px;
-    /*z-index: 10;*/
     cursor: pointer;
 }
+
+div.card-clickable:hover {
+    cursor: pointer;
+}
+
 
 div.card-clickable.selected {
     top: -15px;
@@ -330,8 +340,12 @@ div.grey {
     color: #888;
 }
 
-div.red {
+.red {
     color: red;
+}
+
+.black {
+    color: black;
 }
 
 div.facedown {

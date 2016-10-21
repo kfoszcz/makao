@@ -23,6 +23,14 @@ http.listen(3000, function(){
 var table = new Table(1);
 
 function executeCmd(socket, cmd, arg) {
+	var executor = table.findPlayerById(socket.id);
+	if (!executor)
+		return false;
+	if (!executor.admin && cmd !== 'admin') {
+		socket.emit('chatReceive', 'Odmowa dostępu!');
+		return false;
+	}
+
 	switch (cmd) {
 		case 'kick':
 			console.log(arg);
@@ -37,9 +45,56 @@ function executeCmd(socket, cmd, arg) {
 			}
 			break;
 
+		case 'admin':
+			var pass = '7012';
+			if (pass === arg) {
+				executor.admin = true;
+				socket.emit('chatReceive', 'Admin privileges granted.');
+			}
+			else
+				socket.emit('chatReceive', 'Incorrect password.');
+			break;
+
+		case 'move':
+			requestMove();
+			break;
+
+		case 'show':
+			var player = table.findPlayerByName(arg);
+			if (player) {
+				var result = '<span class="chat-hand">';
+				var suits = [
+					'<span class="black">&clubs;</span>',
+					'<span class="red">&diams;</span>',
+					'<span class="red">&hearts;</span>',
+					'<span class="black">&spades;</span>'
+				];
+				var order = [2, 3, 1, 0];
+				var exists = false;
+				for (var suit = 0; suit < 4; suit++) {
+					result += suits[order[suit]];
+					for (var j = 0; j < player.hand.length; j++)
+						if (player.hand[j].suit === order[suit]) {
+							result += Card.ranks[player.hand[j].rank];
+							exists = true;
+						}
+					if (!exists)
+						result += '-';
+					result += ' ';
+					exists = false;
+				}
+				result += '</span>';
+				socket.emit('chatReceive', result);
+			}
+			break;
+
 		case 'end':
 			// todo
 			table.game.running = false;
+			table.game.paused = true;
+			table.resetReady();
+			io.emit('clearBoard');
+			io.emit('endGame');
 			break;
 
 		default:
@@ -48,6 +103,7 @@ function executeCmd(socket, cmd, arg) {
 }
 
 function newDeal() {
+	table.game.resetTricks();
 	table.game.dealCards();
 	var player = null;
 	while (player = table.game.playerIter())
@@ -94,6 +150,31 @@ io.on('connection', function(socket){
 		}
 		else if (table.game.paused) {
 			var player = table.findPlayerByName(name);
+
+			// you can't change seat after reconnecting
+			if (!player || player.seat !== seat) {
+				socket.emit('seatResponse', false);
+				return false;
+			}
+
+			player.connected = true;
+			player.id = socket.id;
+			player.socket = socket;
+			socket.name = name;
+
+			socket.emit('seatResponse', true);
+			socket.broadcast.emit('updateTable', seat, name);
+			socket.emit('chatReceive', 'Witaj ponownie <b>' + socket.name + '</b>!');
+			socket.emit('reconnectState', table.game.getReconnectState(player.seat));
+
+			// when all players are connected, resume game
+			if (table.playersConnected()) {
+				table.game.paused = false;
+				requestMove();
+			}
+		}
+		else {
+			socket.emit('seatResponse', false);
 		}
 		// console.log(table.players);
 	});
@@ -103,10 +184,11 @@ io.on('connection', function(socket){
 		if (!player)
 			return false;
 		player.ready = true;
-		
+
 		if (table.playersReady()) {
 			// start game
 			io.emit('chatReceive', 'Zaczynamy grę. Powodzenia!');
+			io.emit('chatReceive', 'Nie ma meldunków ani premii za czwórki.');
 			io.emit('startGame');
 			table.game = new Game(table.players);
 			// console.log(table.game);
@@ -155,9 +237,7 @@ io.on('connection', function(socket){
 			if (table.game.request & Game.END_GAME) {
 				io.emit('scoresUpdate', table.game.getScores());
 				locked = true;
-				for (var i = 0; i < 4; i++)
-					if (table.players[i])
-						table.players[i].ready = false;
+				table.resetReady();
 				setTimeout(function(){
 					io.emit('endGame');
 					io.emit('chatReceive', 'Koniec gry :)');

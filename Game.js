@@ -85,8 +85,11 @@ Game.prototype.init = function() {
 	this.running = true;
 	this.paused = false;
 	for (var i = 0; i < 4; i++)
-		if (this.players[i])
+		if (this.players[i]) {
 			this.players[i].resetScores();
+			this.players[i].declared = null;
+			this.players[i].tricks = 0;
+		}
 }
 
 Game.prototype.dealCards = function() {
@@ -117,11 +120,16 @@ Game.prototype.boardValue = function(cards) {
 	return result;
 }
 
+Game.prototype.resetTricks = function() {
+	var player = null;
+	while (player = this.playerIter()) {
+		player.tricks = 0;
+		player.declared = null;
+	}
+}
+
 Game.prototype.move = function(type, value) {
 	if (type == Game.PHASE_BIDDING) {
-		var player = null;
-		while (player = this.playerIter())
-			player.tricks = 0;
 		this.players[this.current].declared = value;
 		this.current = this.nextPlayer(this.current);
 		if (this.current == this.leader) {
@@ -270,6 +278,8 @@ Game.prototype.getReconnectState = function(playerId) {
 	result.start = this.options.deal_start;
 	result.phase = this.phase;
 	result.scores = this.getAllScores();
+	result.topCard = this.topCard;
+	result.trump = this.trump;
 
 	return result;
 }

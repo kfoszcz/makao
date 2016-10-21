@@ -5,6 +5,7 @@ function Player(id, name, seat, socket) {
     this.socket = socket;
     this.ready = false;
     this.connected = true;
+    this.admin = false;
 
     this.hand = [];
     this.declared = 0;
