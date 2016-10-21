@@ -67,6 +67,15 @@ Table.prototype.playersReady = function() {
     return true;
 }
 
+Table.prototype.playersConnected = function() {
+    if (this.playerCount < 2)
+        return false;
+    for (var i = 0; i < 4; i++)
+        if (this.players[i] && !this.players[i].connected)
+            return false;
+    return true;
+}
+
 Table.prototype.resetReady = function() {
     for (var i = 0; i < 4; i++)
         if (this.players[i])

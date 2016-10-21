@@ -284,11 +284,15 @@ div.card-clickable {
     margin-left: -56px;
 }
 
-div.card-clickable:hover {
+div.card-clickable:hover, div.card-clickable.hovered {
     background: #edf;
-    /*top: 0px;*/
+    top: -15px;
     /*z-index: 10;*/
     cursor: pointer;
+}
+
+div.card-clickable.selected {
+    top: -15px;
 }
 
 div.topleft {

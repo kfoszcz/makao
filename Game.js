@@ -4,7 +4,7 @@ var Card = require('./Card.js');
 
 function Game(players) {
 	this.options = {
-		'deal_start': 1,
+		'deal_start': 15,
 		'deal_end': 16,
 		'marriages': true,
 		'half_marriages': true,
@@ -83,6 +83,10 @@ Game.prototype.init = function() {
 	this.best = this.leader;
 	this.deck.shuffle();
 	this.running = true;
+	this.paused = false;
+	for (var i = 0; i < 4; i++)
+		if (this.players[i])
+			this.players[i].resetScores();
 }
 
 Game.prototype.dealCards = function() {
@@ -105,7 +109,10 @@ Game.prototype.boardValue = function(cards) {
 		shift += 4;
 	}
 	result |= this.sameCards(cards) << shift++;
-	result |= this.onlySuit(cards, this.leadingSuit()) << shift++;
+	if (this.current != this.leader)
+		result |= this.onlySuit(cards, this.leadingSuit()) << shift++;
+	else
+		result |= 1 << shift++;
 	result |= this.onlySuit(cards, this.trump) << shift++;
 	return result;
 }
@@ -132,6 +139,7 @@ Game.prototype.move = function(type, value) {
 		this.players[this.current].removeCards(value);
 		this.board[this.current] = value;
 		var val = this.boardValue(value);
+		console.log('Board value: ' + val.toString(16));
 		if (val > this.bestValue) {
 			this.bestValue = val;
 			this.best = this.current;
@@ -184,6 +192,18 @@ Game.prototype.getScores = function() {
 	return result;
 }
 
+Game.prototype.getAllScores = function() {
+	var result = [];
+	for (var i = 0; i < this.deal - this.options.deal_start; i++) {
+		var row = [0, 0, 0, 0];
+		for (var j = 0; j < 4; j++)
+			if (this.players[j])
+				row[j] = this.players[j].cumulated[i];
+		result.push(row);
+	}
+	return result;
+}
+
 Game.prototype.getTrickWinner = function() {
 	return this.players[this.best];
 }
@@ -199,7 +219,7 @@ Game.prototype.sameCards = function(cards) {
 	if (cards.length == 1)
 		return 1;
 	for (var i = 1; i < cards.length; i++)
-		if (cards[i] !== cards[0])
+		if (!cards[i].equals(cards[0]))
 			return 0;
 	return 1;
 }
@@ -227,6 +247,31 @@ Game.prototype.validMove = function(cards) {
 	// or a player played all his cards matching leading suit and some other
 	var suited = this.suitCount(cards, this.leadingSuit());
 	return suited == cards.length || suited == this.players[this.current].suitCount(this.leadingSuit());
+}
+
+Game.prototype.getReconnectState = function(playerId) {
+	var result = {};
+
+	result.myHand = this.players[playerId].hand;
+	result.handSizes = [0, 0, 0, 0];
+	result.declared = [0, 0, 0, 0];
+	result.tricks = [0, 0, 0, 0];
+
+	for (var i = 0; i < 4; i++)
+		if (this.players[i]) {
+			result.handSizes[i] = this.players[i].hand.length;
+			result.declared[i] = this.players[i].declared;
+			result.tricks[i] = this.players[i].tricks;
+		}
+
+	result.board = this.board;
+	result.current = this.current;
+	result.deal = this.deal;
+	result.start = this.options.deal_start;
+	result.phase = this.phase;
+	result.scores = this.getAllScores();
+
+	return result;
 }
 
 module.exports = Game;

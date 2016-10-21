@@ -7,7 +7,13 @@ Card.prototype.equals = function(other) {
     return this.suit === other.suit && this.rank === other.rank;
 }
 
+Card.prototype.print = function() {
+    return Card.ranks[this.rank] + Card.suits[this.suit];
+}
+
 Card.suitOrder = [3, 2, 0, 1];
+Card.suits = ['C', 'D', 'H', 'S'];
+Card.ranks = ['', '', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 
 function compareCard(a, b) {
     if (Card.suitOrder[a.suit] == Card.suitOrder[b.suit])

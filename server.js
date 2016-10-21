@@ -37,6 +37,11 @@ function executeCmd(socket, cmd, arg) {
 			}
 			break;
 
+		case 'end':
+			// todo
+			table.game.running = false;
+			break;
+
 		default:
 			socket.emit('chatReceive', 'Unknown command');
 	}
@@ -51,7 +56,7 @@ function newDeal() {
 }
 
 function requestMove() {
-	table.game.getCurrentPlayer().socket.emit('moveRequest', table.game.phase);
+	table.game.getCurrentPlayer().socket.emit('moveRequest', table.game.phase, table.game.current === table.game.leader);
 	table.game.getCurrentPlayer().socket.broadcast.emit('updateCurrentPlayer', table.game.current);
 }
 
@@ -64,20 +69,31 @@ io.on('connection', function(socket){
 		console.log('User ' + socket.name + ' disconnected');
 		var player = table.findPlayerById(socket.id);
 		if (player) {
-			table.removePlayer(player.seat);
+			if (!table.game || !table.game.running) {
+				table.removePlayer(player.seat);
+			}
+			else {
+				table.game.paused = true;
+				player.connected = false;
+			}
 			socket.broadcast.emit('updateTable', player.seat, null);
 			socket.broadcast.emit('chatReceive', 'Użytkownik <b>' + player.name + '</b> rozłączył się.');
 		}
 	});
 
 	socket.on('seatRequest', function(seat, name){
-		var result = table.addPlayer(seat, new Player(socket.id, name, seat, socket));
-		socket.name = name;
-		console.log('User #' + socket.id + ' changed name to ' + socket.name);
-		socket.emit('seatResponse', result);
-		if (result) {
-			socket.broadcast.emit('updateTable', seat, name);
-			socket.emit('chatReceive', 'Witaj <b>' + socket.name + '</b>!');
+		if (!table.game || !table.game.running) {
+			var result = table.addPlayer(seat, new Player(socket.id, name, seat, socket));
+			socket.name = name;
+			console.log('User #' + socket.id + ' changed name to ' + socket.name);
+			socket.emit('seatResponse', result);
+			if (result) {
+				socket.broadcast.emit('updateTable', seat, name);
+				socket.emit('chatReceive', 'Witaj <b>' + socket.name + '</b>!');
+			}
+		}
+		else if (table.game.paused) {
+			var player = table.findPlayerByName(name);
 		}
 		// console.log(table.players);
 	});
@@ -87,6 +103,7 @@ io.on('connection', function(socket){
 		if (!player)
 			return false;
 		player.ready = true;
+		
 		if (table.playersReady()) {
 			// start game
 			io.emit('chatReceive', 'Zaczynamy grę. Powodzenia!');
@@ -100,8 +117,19 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('moveSend', function(type, value){
-		// if (type == 1)
-		// 	console.log('Received move: ' + value[0].suit + ' ' + value[0].rank);
+		if (!table.game.running || table.game.paused)
+			return false;
+		if (type == 1) {
+			// cast type to Card
+			var logMsg = 'Received move: [ ';
+			for (var i = 0 ; i < value.length; i++) {
+				value[i] = Object.assign(new Card(), value[i]);
+				// var card = new Card(value[i].suit, value[i].rank);
+				logMsg += (value[i].print() + ' ');
+			}
+			logMsg += ']';
+			console.log(logMsg);
+		}
 		if (socket.id != table.game.getCurrentPlayer().id || locked)
 			return false;
 		if (type != table.game.phase)
@@ -127,6 +155,9 @@ io.on('connection', function(socket){
 			if (table.game.request & Game.END_GAME) {
 				io.emit('scoresUpdate', table.game.getScores());
 				locked = true;
+				for (var i = 0; i < 4; i++)
+					if (table.players[i])
+						table.players[i].ready = false;
 				setTimeout(function(){
 					io.emit('endGame');
 					io.emit('chatReceive', 'Koniec gry :)');

@@ -16,6 +16,8 @@ function Player(id, name, seat, socket) {
 
 Player.prototype.inHand = function(cards) {
 	// cards and this.hand must be sorted!
+	if (cards.length == 0)
+		return false;
 	var j = 0;
 	for (var i = 0; i < this.hand.length; i++) {
 		if (this.hand[i].equals(cards[j]))
@@ -55,6 +57,11 @@ Player.prototype.addScore = function(score) {
 	this.scores.push(score);
 	var lastCumulated = (this.cumulated.length > 0) ? this.cumulated.slice(-1)[0] : 0;
 	this.cumulated.push(lastCumulated + score);
+}
+
+Player.prototype.resetScores = function() {
+	this.scores = [];
+	this.cumulated = [];
 }
 
 module.exports = Player;

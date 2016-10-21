@@ -54,7 +54,8 @@ function appendScoreRow(scores) {
 function declareIncrease() {
     var value = parseInt($('#number-value').text());
     value++;
-    $('#number-value').text(value);
+    if (value <= spinnerMax)
+        $('#number-value').text(value);
 }
 
 function declareDecrease() {
@@ -84,6 +85,11 @@ var selectedCards = [];
 var focused = true;
 var dealNumber = 0;
 var handSizes = [0, 0, 0, 0];
+var playFirst = false;
+var playLength = 0;
+var myTurn = false;
+
+var spinnerMax = 300000;
 
 var snd = new Audio('notification.mp3');
 
@@ -200,9 +206,13 @@ function endGame() {
 
 function handReceive(hand) {
     dealNumber = hand.length;
+    spinnerMax = dealNumber;
     for (var i = 0; i < hand.length; i++)
         $('#hand-south').append(create_card(hand[i], true));
     $('div.card-clickable').click(cardClicked);
+
+    $('div.card-clickable').hover(cardOver, cardOut);
+
     var len = Math.min(hand.length, 10);
     for (var i = 0; i < 4; i++)
         if (names[i] && i != mySeat)
@@ -212,21 +222,53 @@ function handReceive(hand) {
                 handSizes[seat(i)] = dealNumber;
             }
     tricksClear();
+    appendScoreRow(['', '', '', '']);
+}
+
+function cardOver() {
+    $(this).addClass('hovered');
+    if (myTurn && playFirst) {
+        var val = $(this).attr('value');
+        $(this).nextAll('[value="' + val + '"]').addClass('hovered');
+    }
+}
+
+function cardOut() {
+    $(this).removeClass('hovered');
+    if (myTurn && playFirst) {
+        var val = $(this).attr('value');
+        $(this).nextAll('[value="' + val + '"]').removeClass('hovered');
+    }
 }
 
 function cardClicked() {
     if (currentPlayer != 0)
         return;
-    // $(this).css('top', -15 - parseInt($(this).css('top')));
-    selectedCards = [];
-    selectedCards.push($(this));
-    // console.log(selectedCards);
+
     var toSend = [];
-    for (var i = 0; i < selectedCards.length; i++) {
-        var val = selectedCards[i].attr('value').split('-', 2);
-        toSend.push(new Card(parseInt(val[0]), parseInt(val[1])));
+
+    // we are first to act
+    if (playFirst) {
+        $('.hovered').toggleClass('selected');
+        $('.hovered').each(function(index){
+            var val = $(this).attr('value').split('-', 2);
+            toSend.push(new Card(parseInt(val[0]), parseInt(val[1])));
+        });
+        moveSend(1, toSend);
     }
-    moveSend(1, toSend);
+    
+    // if we selected required amount of cards, send move
+    else {
+        $(this).toggleClass('selected');
+        if ($('div.selected').length === playLength) {
+            $('div.selected').each(function(index){
+                var val = $(this).attr('value').split('-', 2);
+                toSend.push(new Card(parseInt(val[0]), parseInt(val[1])));
+            });
+            moveSend(1, toSend);
+        }
+    }
+
 }
 
 function tricksUpdate(player, value) {
@@ -249,13 +291,20 @@ function trumpReceive(card) {
     $('#trump').html(create_card(card));
 }
 
-function moveRequest(type) {
+function moveRequest(type, leader) {
     updateCurrentPlayer(mySeat);
+    myTurn = true;
     if (!focused)
         snd.play();
     if (type == 0) {
         $('.number-spinner').show();
     }
+    else {
+        playFirst = leader;
+        if (playFirst)
+            $(':hover').last().trigger('mouseenter');
+    }
+
 }
 
 function moveSend(type, value) {
@@ -267,14 +316,15 @@ function moveSend(type, value) {
 function moveOK(result) {
     if (!result)
         return;
+    myTurn = false;
     if (moveType == 0) {
         $('.number-spinner').hide();
         tricks[0].text(moveValue);
         declared[0] = moveValue;
     }
     else {
-        board[0].append(selectedCards);
-        selectedCards = [];
+        board[0].append($('div.selected'));
+        $('div.selected').removeClass('selected hovered card-clickable');
     }
 }
 
@@ -285,6 +335,7 @@ function moveReceive(player, type, value) {
         declared[player] = value;
     }
     else {
+        playLength = value.length;
         for (var i = 0; i < value.length; i++) {
             board[player].append(create_card(value[i]));
             handSizes[player]--;
@@ -307,6 +358,17 @@ function clearBoard() {
 
 $(document).ready(function(){
     socket = io();
+
+    $('#username').focus();
+
+    /*$('#hand-south').append(create_card(new Card(2, 6), true));
+    $('#hand-south').append(create_card(new Card(2, 6), true));
+    $('#hand-south').append(create_card(new Card(2, 6), true));
+    $('#hand-south').append(create_card(new Card(3, 8), true));
+    $('#hand-south').append(create_card(new Card(3, 8), true));
+    $('div.card-clickable').click(cardClicked);
+    $('div.card-clickable').hover(cardOver, cardOut);
+    $('#hand-south').show();*/
 
     socket.on('server-start', function(){
         console.log('restart');
@@ -333,7 +395,10 @@ $(document).ready(function(){
 
     socket.on('clearBoard', clearBoard);
 
-    socket.on('scoresUpdate', appendScoreRow);
+    socket.on('scoresUpdate', function(scores){
+        $('.score-row').last().remove();
+        appendScoreRow(scores);
+    });
 
     socket.on('seatResponse', function(response){
         if (response) {
