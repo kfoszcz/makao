@@ -1,0 +1,104 @@
+/* card styles */
+div.card {
+    position: relative;
+    display: inline-block;
+    border: 1px solid grey;
+    border-radius: 10px;
+    height: 126px;
+    width: 81px;
+    font-size: 20pt;
+    font-family: Times;
+    text-align: center;
+    margin-right: -56px;
+    user-select: none;
+    -webkit-user-select: none;
+    background-image: url('faces/sprite.png');
+    background-repeat: no-repeat;
+    text-align: left;
+    flex-shrink: 0;
+}
+
+div.card:last-child {
+    margin-right: 0px;
+}
+
+div.card-clickable {
+    margin-right: -56px;
+}
+
+div.card-clickable.hovered {
+    top: -15px;
+    cursor: pointer;
+}
+
+div.card-clickable:hover {
+    cursor: pointer;
+}
+
+
+div.card-clickable.selected {
+    top: -15px;
+}
+
+div.card.facedown {
+    margin-right: -70px;
+    background-image: url('faces/facedown.png');
+}
+
+div.card.facedown:last-child {
+    margin-right: 0px;
+}
+
+/* card faces */
+.c0-10 { background-position: -0px -0px; width: 81px; height: 126px; }
+.c0-11 { background-position: -81px -0px; width: 81px; height: 126px; }
+.c0-12 { background-position: -162px -0px; width: 81px; height: 126px; }
+.c0-13 { background-position: -243px -0px; width: 81px; height: 126px; }
+.c0-14 { background-position: -324px -0px; width: 81px; height: 126px; }
+.c0-2 { background-position: -405px -0px; width: 81px; height: 126px; }
+.c0-3 { background-position: -486px -0px; width: 81px; height: 126px; }
+.c0-4 { background-position: -0px -126px; width: 81px; height: 126px; }
+.c0-5 { background-position: -81px -126px; width: 81px; height: 126px; }
+.c0-6 { background-position: -162px -126px; width: 81px; height: 126px; }
+.c0-7 { background-position: -243px -126px; width: 81px; height: 126px; }
+.c0-8 { background-position: -324px -126px; width: 81px; height: 126px; }
+.c0-9 { background-position: -405px -126px; width: 81px; height: 126px; }
+.c1-10 { background-position: -486px -126px; width: 81px; height: 126px; }
+.c1-11 { background-position: -0px -252px; width: 81px; height: 126px; }
+.c1-12 { background-position: -81px -252px; width: 81px; height: 126px; }
+.c1-13 { background-position: -162px -252px; width: 81px; height: 126px; }
+.c1-14 { background-position: -243px -252px; width: 81px; height: 126px; }
+.c1-2 { background-position: -324px -252px; width: 81px; height: 126px; }
+.c1-3 { background-position: -405px -252px; width: 81px; height: 126px; }
+.c1-4 { background-position: -486px -252px; width: 81px; height: 126px; }
+.c1-5 { background-position: -0px -378px; width: 81px; height: 126px; }
+.c1-6 { background-position: -81px -378px; width: 81px; height: 126px; }
+.c1-7 { background-position: -162px -378px; width: 81px; height: 126px; }
+.c1-8 { background-position: -243px -378px; width: 81px; height: 126px; }
+.c1-9 { background-position: -324px -378px; width: 81px; height: 126px; }
+.c2-10 { background-position: -405px -378px; width: 81px; height: 126px; }
+.c2-11 { background-position: -486px -378px; width: 81px; height: 126px; }
+.c2-12 { background-position: -0px -504px; width: 81px; height: 126px; }
+.c2-13 { background-position: -81px -504px; width: 81px; height: 126px; }
+.c2-14 { background-position: -162px -504px; width: 81px; height: 126px; }
+.c2-2 { background-position: -243px -504px; width: 81px; height: 126px; }
+.c2-3 { background-position: -324px -504px; width: 81px; height: 126px; }
+.c2-4 { background-position: -405px -504px; width: 81px; height: 126px; }
+.c2-5 { background-position: -486px -504px; width: 81px; height: 126px; }
+.c2-6 { background-position: -0px -630px; width: 81px; height: 126px; }
+.c2-7 { background-position: -81px -630px; width: 81px; height: 126px; }
+.c2-8 { background-position: -162px -630px; width: 81px; height: 126px; }
+.c2-9 { background-position: -243px -630px; width: 81px; height: 126px; }
+.c3-10 { background-position: -324px -630px; width: 81px; height: 126px; }
+.c3-11 { background-position: -405px -630px; width: 81px; height: 126px; }
+.c3-12 { background-position: -486px -630px; width: 81px; height: 126px; }
+.c3-13 { background-position: -0px -756px; width: 81px; height: 126px; }
+.c3-14 { background-position: -81px -756px; width: 81px; height: 126px; }
+.c3-2 { background-position: -162px -756px; width: 81px; height: 126px; }
+.c3-3 { background-position: -243px -756px; width: 81px; height: 126px; }
+.c3-4 { background-position: -324px -756px; width: 81px; height: 126px; }
+.c3-5 { background-position: -405px -756px; width: 81px; height: 126px; }
+.c3-6 { background-position: -486px -756px; width: 81px; height: 126px; }
+.c3-7 { background-position: -0px -882px; width: 81px; height: 126px; }
+.c3-8 { background-position: -81px -882px; width: 81px; height: 126px; }
+.c3-9 { background-position: -162px -882px; width: 81px; height: 126px; }

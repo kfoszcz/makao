@@ -2,22 +2,8 @@ var Player = require('./Player.js');
 var Deck = require('./Deck.js');
 var Card = require('./Card.js');
 
-function Game(players) {
-	this.options = {
-		'deal_start': 15,
-		'deal_end': 16,
-		'marriages': true,
-		'half_marriages': true,
-		'always_shuffle': false,
-		'pairs': true,
-		'quads_value': 20,
-		'players_min': 2,
-		'players_max': 4,
-		'decks': 4,
-		'handicap': true,
-		'suit_values': [4, 8, 10, 6],
-		'win_value': 10
-	}
+function Game(players, options) {
+	this.options = options;
 	this.playersCount = 0;
 	this.seats = [];
 	this.phase = Game.PHASE_BIDDING;
@@ -249,7 +235,7 @@ Game.prototype.validMove = function(cards) {
 
 	// if current player is first to act, move is always valid
 	if (this.current == this.leader)
-		return true;
+		return this.sameCards(cards);
 
 	// move is valid if all played cards match suit that was led
 	// or a player played all his cards matching leading suit and some other

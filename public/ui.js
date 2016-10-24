@@ -1,17 +1,21 @@
 function create_card(card, my) {
-    if (card == null) {
-        suit = 4;
-        value = 1;
-    }
+    var result = $('<div class="card"></div>');
+    if (card == null)
+        result.addClass('facedown');
     else {
-        suit = card.suit;
-        value = card.rank;
+        result.addClass('c' + card.suit + '-' + card.rank);
+        result.attr('value', card.suit + '-' + card.rank);
     }
+    if (my)
+        result.addClass('card-clickable');
+    return result;
+
     var colors = ['black', 'red', 'red', 'black', 'facedown'];
     var suits = ['&clubs;', '&diams;', '&hearts;', '&spades;', '&nbsp;'];
     var values = ['', '&nbsp;', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
     var result = document.createElement('div');
     result.className = 'card ' + colors[suit];
+    // result.className += ' c0-2';
     if (my) {
         result.className += ' card-clickable';
         result.setAttribute('value', suit + '-' + value);
@@ -203,17 +207,9 @@ function updateAllNames(playerNames) {
         updateTable(i, playerNames[i]);
 }
 
-// chat functions
-function chatSend(msg) {
-    if (msg.length == 0 || msg.length > 300)
-        return false;
-    // console.log(msg);
-    socket.emit('chatMsg', msg);
-    return true;
-}
-
+// draw functions
 function drawHand(player, length) {
-    length = Math.min(length, 10);
+    length = Math.min(length, 15);
     player = seat(player);
     for (var i = 0; i < length; i++)
         hands[player].append(create_card());
@@ -230,6 +226,15 @@ function drawBoard(player, cards) {
     player = seat(player);
     for (var i = 0; i < cards.length; i++)
         board[player].append(create_card(cards[i]));
+}
+
+// chat functions
+function chatSend(msg) {
+    if (msg.length == 0 || msg.length > 300)
+        return false;
+    // console.log(msg);
+    socket.emit('chatMsg', msg);
+    return true;
 }
 
 function chatReceive(msg, sender) {
@@ -307,15 +312,15 @@ function cardOut() {
 }
 
 function cardClicked() {
-    if (currentPlayer != 0)
+    if (currentPlayer != 0 || phase == 0)
         return;
 
     var toSend = [];
 
     // we are first to act
     if (playFirst) {
-        $('.hovered').toggleClass('selected');
-        $('.hovered').each(function(index){
+        $('.hovered').addClass('selected');
+        $('.selected').each(function(index){
             var val = $(this).attr('value').split('-', 2);
             toSend.push(new Card(parseInt(val[0]), parseInt(val[1])));
         });
@@ -359,6 +364,7 @@ function trumpReceive(card) {
 function moveRequest(type, leader) {
     updateCurrentPlayer(mySeat);
     myTurn = true;
+    phase = type;
     if (!focused)
         snd.play();
     if (type == 0) {
@@ -426,6 +432,16 @@ function clearBoard() {
 }
 
 $(document).ready(function(){
+    // card faces test
+    
+    /*for (var i = 0; i < 4; i++)
+        for (var j = 2; j < 15; j++)
+            $('#hand-south').append(create_card(new Card(i, j)));
+    $('#button-south').hide();
+    $('#hand-south').show();
+    return;*/
+
+
     socket = io();
 
     $('#username').focus();

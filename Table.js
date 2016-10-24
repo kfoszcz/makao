@@ -76,6 +76,14 @@ Table.prototype.playersConnected = function() {
     return true;
 }
 
+Table.prototype.kickDisconnected = function() {
+    for (var i = 0; i < 4; i++)
+        if (this.players[i] && !this.players[i].connected) {
+            delete this.players[i];
+            this.playerCount--;
+        }
+}
+
 Table.prototype.resetReady = function() {
     for (var i = 0; i < 4; i++)
         if (this.players[i])

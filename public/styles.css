@@ -65,6 +65,10 @@ div#username-request {
     color: white;
 }
 
+input#username {
+    text-align: center;
+}
+
 div#waiting {
     color: white;
     font-size: 0.5em;
@@ -118,10 +122,7 @@ div.button {
 }
 
 div.current-player {
-    animation: blinker 2s cubic-bezier(1, 0, 0, 1) infinite;
-}
-@keyframes blinker {
-    50% { opacity: 0; }
+    text-decoration: underline;
 }
 
 div#ready-button {
@@ -182,6 +183,22 @@ div#desk-center {
     flex-direction: column;
     justify-content: space-between;
     text-align: center;
+}
+
+div#desk-north {
+    padding-top: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow-x: visible;
+}
+
+div#desk-south {
+    padding-bottom: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    overflow-x: visible;
 }
 
 div.scorecard {
@@ -247,62 +264,20 @@ span.chat-hand {
 /* hand styles */
 div.hand {
     display: none; 
-    overflow-y: hidden;
-    min-height: 112px;
+    overflow: hidden;
+    max-height: 126px;
+    min-height: 126px;
 }
 
 div#hand-south, div#hand-north {
+    min-width: 0;
     white-space: nowrap;
-    overflow-x: auto;
+    overflow-x: hidden;
 }
 
 div#hand-south {
-    min-height: 112px;
+    max-height: 126px;
     overflow: visible;
-}
-
-
-/* card styles */
-div.card {
-    position: relative;
-    display: inline-block;
-    border: 1px solid grey;
-    border-radius: 10px;
-    padding: 5px;
-    height: 112px;
-    width: 72px;
-    font-size: 20pt;
-    font-family: Times;
-    line-height: 80%;
-    letter-spacing: -3px;
-    text-align: center;
-    background: #fff;
-    margin-left: -56px;
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-div.card:first-child {
-    margin-left: 0px;
-}
-
-div.card-clickable {
-    margin-left: -56px;
-}
-
-div.card-clickable.hovered {
-    background: #edf;
-    top: -15px;
-    cursor: pointer;
-}
-
-div.card-clickable:hover {
-    cursor: pointer;
-}
-
-
-div.card-clickable.selected {
-    top: -15px;
 }
 
 div.topleft {

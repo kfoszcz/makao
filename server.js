@@ -11,6 +11,7 @@ var Game = require('./Game.js')
 var locked = false;
 
 app.use(express.static(__dirname + '/public'));
+app.use(express.static(__dirname + '/public/img'));
 
 app.get('/', function(req, res){
 	res.sendFile(__dirname + '/index.html');
@@ -21,6 +22,21 @@ http.listen(3000, function(){
 });
 
 var table = new Table(1);
+var gameOptions = {
+	'deal_start': 15,
+	'deal_end': 16,
+	'marriages': true,
+	'half_marriages': true,
+	'always_shuffle': false,
+	'pairs': true,
+	'quads_value': 20,
+	'players_min': 2,
+	'players_max': 4,
+	'decks': 4,
+	'handicap': true,
+	'suit_values': [4, 8, 10, 6],
+	'win_value': 10
+};
 
 function executeCmd(socket, cmd, arg) {
 	var executor = table.findPlayerById(socket.id);
@@ -59,6 +75,18 @@ function executeCmd(socket, cmd, arg) {
 			requestMove();
 			break;
 
+		case 'start':
+			var val = parseInt(arg);
+			gameOptions.deal_start = val;
+			socket.emit('chatReceive', 'deal_start changed to ' + val);
+			break;
+
+		case 'end':
+			var val = parseInt(arg);
+			gameOptions.deal_end = val;
+			socket.emit('chatReceive', 'deal_end changed to ' + val);
+			break;
+
 		case 'show':
 			var player = table.findPlayerByName(arg);
 			if (player) {
@@ -88,10 +116,11 @@ function executeCmd(socket, cmd, arg) {
 			}
 			break;
 
-		case 'end':
+		case 'end-game':
 			// todo
 			table.game.running = false;
 			table.game.paused = true;
+			table.kickDisconnected();
 			table.resetReady();
 			io.emit('clearBoard');
 			io.emit('endGame');
@@ -190,7 +219,7 @@ io.on('connection', function(socket){
 			io.emit('chatReceive', 'Zaczynamy grę. Powodzenia!');
 			io.emit('chatReceive', 'Nie ma meldunków ani premii za czwórki.');
 			io.emit('startGame');
-			table.game = new Game(table.players);
+			table.game = new Game(table.players, gameOptions);
 			// console.log(table.game);
 			table.game.init();
 			newDeal();
@@ -199,8 +228,6 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('moveSend', function(type, value){
-		if (!table.game.running || table.game.paused)
-			return false;
 		if (type == 1) {
 			// cast type to Card
 			var logMsg = 'Received move: [ ';
@@ -212,10 +239,19 @@ io.on('connection', function(socket){
 			logMsg += ']';
 			console.log(logMsg);
 		}
-		if (socket.id != table.game.getCurrentPlayer().id || locked)
+		var invalid = false;
+		if (!table.game.running || table.game.paused)
+			invalid = true;
+		else if (socket.id != table.game.getCurrentPlayer().id || locked)
+			invalid = true;
+		else if (type != table.game.phase)
+			invalid = true;
+
+		if (invalid) {
+			socket.emit('moveOK', false);
 			return false;
-		if (type != table.game.phase)
-			return false;
+		}
+
 		var current = table.game.current;
 		var result = table.game.move(type, value);
 		socket.emit('moveOK', result);
