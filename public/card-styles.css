@@ -15,11 +15,14 @@ div.card {
     background-image: url('faces/sprite.png');
     background-repeat: no-repeat;
     text-align: left;
-    flex-shrink: 0;
 }
 
 div.card:last-child {
     margin-right: 0px;
+}
+
+div.card.board {
+    flex-shrink: 0;
 }
 
 div.card-clickable {
@@ -40,6 +43,16 @@ div.card-clickable.selected {
     top: -15px;
 }
 
+div.card.highlighted {
+    border: 1px solid yellow;
+    top: -5px;
+}
+
+div.card.marriage-lead {
+    border: 1px solid red;
+    top: -5px;
+}
+
 div.card.facedown {
     margin-right: -70px;
     background-image: url('faces/facedown.png');
@@ -47,6 +60,15 @@ div.card.facedown {
 
 div.card.facedown:last-child {
     margin-right: 0px;
+}
+
+div.card.old-trump {
+    -webkit-transform: scale(0.5);
+    transform: scale(0.5);
+}
+
+div.suit-only {
+    font-size: 4em;
 }
 
 /* card faces */

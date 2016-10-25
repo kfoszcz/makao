@@ -37,6 +37,10 @@ function create_card(card, my) {
     return result;
 }
 
+function cardClass(card) {
+    return 'c' + card.suit + '-' + card.rank;
+}
+
 function createScoreHeader() {
     $('.score-table').append('<div class="score-row score-header"></div>');
     $('.score-header').append('<div class="score-index">#</div>');
@@ -73,6 +77,14 @@ function declareDecrease() {
         $('#number-value').text(value);
 }
 
+function tricksDecrease(amount) {
+    tricksLeft -= amount;
+    $('#tricks-remaining').text(tricksLeft);
+}
+
+var colors = ['black', 'red', 'red', 'black'];
+var suits = ['&clubs;', '&diams;', '&hearts;', '&spades;'];
+
 var socket = null;
 var mySeat = 0;
 var myPreviousSeat = -1;
@@ -85,6 +97,7 @@ var cards = [];
 var hands = [];
 var moveType = null;
 var moveValue = null;
+var moveMarriage = null;
 var tricks = [];
 var board = [];
 var declared = [0, 0, 0, 0];
@@ -98,8 +111,13 @@ var playLength = 0;
 var myTurn = false;
 var phase = 0;
 var running = false;
+var trumpChanged = false;
+var totalExtra = 0;
+var totalBids = 0;
+var tricksLeft = 0;
 
 var spinnerMax = 300000;
+var opponentHandLength = 15;
 
 var snd = new Audio('notification.mp3');
 
@@ -120,11 +138,21 @@ function reconnectState(state) {
     startGame();
     trumpReceive(state.topCard);
     updateCurrentPlayer(state.current);
-    declared = state.declared;
     handSizes = state.handSizes;
     phase = state.phase;
     dealNumber = state.deal;
-    spinnerMax = dealNumber;
+    spinnerMax = state.maxBid;
+    if (state.trumpChanged)
+        trumpUpdate(state.trump);
+
+    for (var i = 0; i < 4; i++)
+        declared[seat(i)] = state.declared[i];
+
+    totalExtra = state.totalExtra;
+    for (var i = 0; i < 4; i++)
+        if (state.declared[i])
+            totalBids += state.declared[i];
+    extraUpdate(totalExtra);
 
     // draw scores, header is drawn by startGame()
     for (var i = 0; i < state.scores.length; i++)
@@ -155,6 +183,9 @@ function reconnectState(state) {
                 playLength = Math.max(playLength, state.board[i].length);
             }
     }
+
+    tricksLeft = $('#hand-south div.card').length + $('#desk-south div.card').length;
+    $('#tricks-remaining').text(tricksLeft);
 }
 
 function countPlayers() {
@@ -209,7 +240,7 @@ function updateAllNames(playerNames) {
 
 // draw functions
 function drawHand(player, length) {
-    length = Math.min(length, 15);
+    length = Math.min(length, opponentHandLength);
     player = seat(player);
     for (var i = 0; i < length; i++)
         hands[player].append(create_card());
@@ -225,7 +256,7 @@ function drawMyHand(cards) {
 function drawBoard(player, cards) {
     player = seat(player);
     for (var i = 0; i < cards.length; i++)
-        board[player].append(create_card(cards[i]));
+        board[player].append(create_card(cards[i]).addClass('board'));
 }
 
 // chat functions
@@ -255,6 +286,7 @@ function playerReady() {
 
 function startGame() {
     $('.score-table').empty();
+    $('.info').show();
     $('#waiting').hide();
     for (var i = 0; i < 4; i++) {
         if (names[i]) {
@@ -275,12 +307,21 @@ function endGame() {
     tricksClear();
     $('#ready-button').show();
     $('#trump').empty();
+    $('#trump-current').empty().hide();
+    $('.info').hide();
     running = false;
 }
 
-function handReceive(hand) {
+function handReceive(hand, maxBid, redeal) {
+    $('.hand').empty();
+    $('#trump-current').hide();
+    trumpChanged = false;
     dealNumber = hand.length;
-    spinnerMax = dealNumber;
+    spinnerMax = maxBid;
+    totalBids = 0;
+    tricksLeft = dealNumber;
+    $('#tricks-remaining').text(tricksLeft);
+    extraUpdate(0);
 
     drawMyHand(hand);
 
@@ -291,13 +332,32 @@ function handReceive(hand) {
             drawHand(i, hand.length);
         }
     tricksClear();
-    appendScoreRow();
+    if (!redeal)
+        appendScoreRow();
+}
+
+function selectorToCard(selector) {
+    var val = $(selector).attr('value').split('-', 2);
+    return new Card(parseInt(val[0]), parseInt(val[1]));
+}
+
+function marriageCards(card, lower) {
+    var marriageRank = 0;
+    if (card.rank == 13)
+        marriageRank = lower ? 11 : 12;
+    else if (card.rank == 12)
+        marriageRank = lower ? 11 : 13;
+    else if (card.rank == 11)
+        marriageRank = lower ? 12 : 13;
+    if (marriageRank == 0)
+        return null;
+    var val = card.suit + '-' + marriageRank;
+    return $('#hand-south [value="' + val + '"]');//.addClass('highlighted');
 }
 
 function cardOver() {
-    if (!myTurn) return;
     $(this).addClass('hovered');
-    if (myTurn && playFirst) {
+    if ((myTurn && playFirst) || phase == 0) {
         var val = $(this).attr('value');
         $(this).nextAll('[value="' + val + '"]').addClass('hovered');
     }
@@ -305,7 +365,7 @@ function cardOver() {
 
 function cardOut() {
     $(this).removeClass('hovered');
-    if (myTurn && playFirst) {
+    if ((myTurn && playFirst) || phase == 0) {
         var val = $(this).attr('value');
         $(this).nextAll('[value="' + val + '"]').removeClass('hovered');
     }
@@ -316,15 +376,66 @@ function cardClicked() {
         return;
 
     var toSend = [];
+    var toMarry = [];
 
     // we are first to act
     if (playFirst) {
-        $('.hovered').addClass('selected');
-        $('.selected').each(function(index){
-            var val = $(this).attr('value').split('-', 2);
-            toSend.push(new Card(parseInt(val[0]), parseInt(val[1])));
-        });
-        moveSend(1, toSend);
+        var marriageLength = $('.marriage-lead').length;
+
+        // marriage choose mode
+        if (marriageLength) {
+            var card = selectorToCard($(this));
+
+            // no marriage
+            if ($(this).hasClass('marriage-lead')) {
+                $('.marriage-lead').addClass('selected');
+                for (var i = 0; i < marriageLength; i++)
+                    toSend.push(card);
+                moveSend(1, toSend);
+            }
+
+            // marriage
+            else if ($(this).hasClass('highlighted')) {
+                $('.marriage-lead').addClass('selected');
+                var lead = selectorToCard($('.marriage-lead').first());
+                for (var i = 0; i < marriageLength; i++) {
+                    toSend.push(lead);
+                    toMarry.push(card);
+                }
+                moveSend(1, toSend, toMarry);
+            }
+
+            // cancelled
+            else
+                $('.card-clickable').removeClass('highlighted marriage-lead hovered');
+        }
+
+        // normal mode
+        else {
+            var len = $('.hovered').length;
+            var card = selectorToCard($('.hovered').first());
+            var marriageLow = marriageCards(card, true);
+            var marriageHigh = marriageCards(card, false);
+            console.log($(marriageHigh));
+            console.log($(marriageLow));
+
+            if (marriageLow && marriageLow.length >= len)
+                marriageLow.addClass('highlighted');
+
+            if (marriageHigh && marriageHigh.length >= len)
+                marriageHigh.addClass('highlighted');
+
+            if ($('.highlighted').length == 0) {
+                $('.hovered').addClass('selected');
+                for (var i = 0; i < len; i++)
+                    toSend.push(card);
+                moveSend(1, toSend);
+            }
+
+            else {
+                $('.hovered').addClass('marriage-lead');
+            }
+        }
     }
     
     // if we selected required amount of cards, send move
@@ -332,8 +443,7 @@ function cardClicked() {
         $(this).toggleClass('selected');
         if ($('div.selected').length === playLength) {
             $('div.selected').each(function(index){
-                var val = $(this).attr('value').split('-', 2);
-                toSend.push(new Card(parseInt(val[0]), parseInt(val[1])));
+                toSend.push(selectorToCard($(this)));
             });
             moveSend(1, toSend);
         }
@@ -361,6 +471,20 @@ function trumpReceive(card) {
     $('#trump').html(create_card(card));
 }
 
+function trumpUpdate(suit) {
+    $('#trump-current').html('<div class="suit-only ' + colors[suit] + '">' + suits[suit] + '</div>');
+    if (!trumpChanged) {
+        trumpChanged = true;
+        $('#trump div.card').addClass('old-trump');
+        $('#trump-current').show();
+    }
+}
+
+function extraUpdate(value) {
+    totalExtra = value;
+    $('#declarations-total').text(totalBids - totalExtra);
+}
+
 function moveRequest(type, leader) {
     updateCurrentPlayer(mySeat);
     myTurn = true;
@@ -368,7 +492,7 @@ function moveRequest(type, leader) {
     if (!focused)
         snd.play();
     if (type == 0) {
-        $('#number-value').text(0);
+        $('#number-value').text(Math.floor(dealNumber / playerCount));
         $('.number-spinner').show();
     }
     else {
@@ -379,15 +503,16 @@ function moveRequest(type, leader) {
 
 }
 
-function moveSend(type, value) {
+function moveSend(type, value, marriage) {
     moveType = type;
     moveValue = value;
-    socket.emit('moveSend', type, value);
+    moveMarriage = marriage;
+    socket.emit('moveSend', type, value, marriage);
 }
 
 function moveOK(result) {
     if (!result) {
-        $('div.selected').removeClass('selected');
+        $('.card-clickable').removeClass('selected hovered marriage-lead highlighted');
         $(':hover').last().trigger('mouseleave');
         return;
     }
@@ -396,26 +521,43 @@ function moveOK(result) {
         $('.number-spinner').hide();
         tricks[0].text(moveValue);
         declared[0] = moveValue;
+        totalBids += moveValue;
+        $('#declarations-total').text(totalBids);
     }
     else {
         board[0].append($('div.selected'));
-        $('div.selected').removeClass('selected hovered card-clickable');
+        $('.card.selected').addClass('board');
+        $('.card.board').removeClass('selected hovered card-clickable marriage-lead highlighted');
+        $('.card-clickable').removeClass('highlighted');
+        if (moveMarriage)
+            trumpUpdate(moveMarriage[0].suit);
     }
 }
 
-function moveReceive(player, type, value) {
+function moveReceive(player, type, value, marriage) {
     player = seat(player)
     if (type == 0) {
         tricks[player].text(value);
         declared[player] = value;
+        totalBids += value;
+        $('#declarations-total').text(totalBids);
     }
     else {
         playLength = value.length;
         for (var i = 0; i < value.length; i++) {
-            board[player].append(create_card(value[i]));
+            board[player].append(create_card(value[i]).addClass('board'));
             handSizes[player]--;
-            if (handSizes[player] < 10)
+            if (handSizes[player] < opponentHandLength)
                 hands[player].children().last().remove();
+        }
+        if (marriage) {
+            trumpUpdate(marriage[0].suit);
+            var len = Math.min(handSizes[player], opponentHandLength);
+            var begin = Math.floor((len - marriage.length) / 2);
+            for (var i = 0; i < marriage.length; i++) {
+                hands[player].children().eq(begin + i).addClass('show ' + cardClass(marriage[i]));
+                hands[player].children().eq(begin + i).removeClass('facedown');
+            }
         }
     }
 }
@@ -428,7 +570,9 @@ function updateCurrentPlayer(player) {
 }
 
 function clearBoard() {
+    tricksDecrease($('#desk-south .card').length);
     $('.desk-board').empty();
+    $('.card.show').attr('class', 'card facedown');
 }
 
 $(document).ready(function(){
@@ -441,10 +585,11 @@ $(document).ready(function(){
     $('#hand-south').show();
     return;*/
 
-
     socket = io();
 
     $('#username').focus();
+
+    $('.info').hide();
 
     /*$('#hand-south').append(create_card(new Card(2, 6), true));
     $('#hand-south').append(create_card(new Card(2, 6), true));
@@ -454,11 +599,6 @@ $(document).ready(function(){
     $('div.card-clickable').click(cardClicked);
     $('div.card-clickable').hover(cardOver, cardOut);
     $('#hand-south').show();*/
-
-    socket.on('server-start', function(){
-        console.log('restart');
-        seatMe(myPreviousSeat);
-    });
 
     $(window).blur(function(){
         focused = false;
@@ -473,6 +613,8 @@ $(document).ready(function(){
     socket.on('updateTable', updateTable);
 
     socket.on('tricksUpdate', tricksUpdate);
+
+    socket.on('extraUpdate', extraUpdate);
 
     socket.on('tricksInit', tricksInit);
 

@@ -23,8 +23,8 @@ http.listen(3000, function(){
 
 var table = new Table(1);
 var gameOptions = {
-	'deal_start': 15,
-	'deal_end': 16,
+	'deal_start': 30,
+	'deal_end': 33,
 	'marriages': true,
 	'half_marriages': true,
 	'always_shuffle': false,
@@ -72,6 +72,13 @@ function executeCmd(socket, cmd, arg) {
 			break;
 
 		case 'move':
+			requestMove();
+			break;
+
+		case 'redeal':
+			table.game.phase = 0;
+			table.game.current = table.game.nextPlayer(table.game.dealer);
+			newDeal(true);
 			requestMove();
 			break;
 
@@ -131,12 +138,11 @@ function executeCmd(socket, cmd, arg) {
 	}
 }
 
-function newDeal() {
-	table.game.resetTricks();
+function newDeal(redeal) {
 	table.game.dealCards();
 	var player = null;
 	while (player = table.game.playerIter())
-		player.socket.emit('handReceive', player.hand);
+		player.socket.emit('handReceive', player.hand, player.maxBid, redeal);
 	io.emit('trumpReceive', table.game.topCard);
 }
 
@@ -227,7 +233,9 @@ io.on('connection', function(socket){
 		}
 	});
 
-	socket.on('moveSend', function(type, value){
+	socket.on('moveSend', function(type, value, marriage){
+		if (marriage && marriage.length == 0)
+			marriage = null;
 		if (type == 1) {
 			// cast type to Card
 			var logMsg = 'Received move: [ ';
@@ -237,6 +245,15 @@ io.on('connection', function(socket){
 				logMsg += (value[i].print() + ' ');
 			}
 			logMsg += ']';
+			if (marriage) {
+				logMsg += ' + [ ';
+				for (var i = 0 ; i < marriage.length; i++) {
+					marriage[i] = Object.assign(new Card(), marriage[i]);
+					// var card = new Card(marriage[i].suit, marriage[i].rank);
+					logMsg += (marriage[i].print() + ' ');
+				}
+				logMsg += ']';
+			}
 			console.log(logMsg);
 		}
 		var invalid = false;
@@ -253,13 +270,21 @@ io.on('connection', function(socket){
 		}
 
 		var current = table.game.current;
-		var result = table.game.move(type, value);
+		var result = table.game.move(type, value, marriage);
 		socket.emit('moveOK', result);
 		if (result) {
 			var moveTimeout = 0;
-			socket.broadcast.emit('moveReceive', current, type, value);
+			socket.broadcast.emit('moveReceive', current, type, value, marriage);
 			if (table.game.request & Game.FIRST_ORBIT) {
 				io.emit('tricksInit');
+			}
+			if (table.game.request & Game.ADD_EXTRA) {
+				io.emit('tricksUpdate', table.game.extra, table.game.getExtraPlayer().tricks);
+				io.emit('extraUpdate', table.game.totalExtra);
+				/*if (table.game.showCards.length) {
+					socket.broadcast.emit('trumpUpdate', table.game.showCards[0].suit);
+					socket.broadcast.emit('showCards', table.game.extra, table.game.showCards);
+				}*/
 			}
 			if (table.game.request & Game.NEW_ORBIT) {
 				locked = true;

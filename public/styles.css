@@ -215,6 +215,26 @@ div.chat {
     flex-direction: column;
 }
 
+/* info panel */
+div#corner-top-right {
+    font-size: 0.7em;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+div.info {
+    display: flex;
+    flex-direction: row;
+    /*align-items: flex-start;*/
+    justify-content: center;
+    padding: 5px 20px;
+}
+
+div.info-label {
+    margin-right: 15px;
+}
 
 /* chat styles */
 div#chat-history {
@@ -249,6 +269,7 @@ div#chat-history::-webkit-scrollbar {
  
 div#chat-history::-webkit-scrollbar-track {
     -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
 }
  
 div#chat-history::-webkit-scrollbar-thumb {
@@ -276,35 +297,8 @@ div#hand-south, div#hand-north {
 }
 
 div#hand-south {
-    max-height: 126px;
     overflow: visible;
-}
-
-div.topleft {
-    display: inline-block;
-    position: absolute;
-    width: 20px;
-    top: 4px;
-    left: 4px;
-}
-
-div.bottomright {
-    position: absolute;
-    width: 20px;
-    bottom: 4px;
-    right: 4px;
-    transform: rotate(180deg);
-}
-
-div.center {
-    position: relative;
-    vertical-align: middle;
-    text-align: center;
-    height: 100%;
-    width: 100%;
-    display: inline-block;
-    font-size: 56pt;
-    line-height: 112px;
+    max-width: 100%;
 }
 
 div#trump-current {
@@ -356,6 +350,7 @@ div.score-window::-webkit-scrollbar {
  
 div.score-window::-webkit-scrollbar-track {
     -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
 }
  
 div.score-window::-webkit-scrollbar-thumb {

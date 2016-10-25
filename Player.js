@@ -13,7 +13,13 @@ function Player(id, name, seat, socket) {
     this.scores = [];
     this.cumulated = [];
     this.sequence = null;
+    this.marriages = [];
+    this.maxBid = 0;
 }
+
+Player.KING = 1;
+Player.QUEEN = 2;
+Player.JACK = 4;
 
 Player.prototype.inHand = function(cards) {
 	// cards and this.hand must be sorted!
@@ -63,6 +69,50 @@ Player.prototype.addScore = function(score) {
 Player.prototype.resetScores = function() {
 	this.scores = [];
 	this.cumulated = [];
+}
+
+Player.prototype.resetMarriages = function() {
+	this.marriages = [
+		[0, 0, 0, 1000, 0, 1000, 1000],
+		[0, 0, 0, 1000, 0, 1000, 1000],
+		[0, 0, 0, 1000, 0, 1000, 1000],
+		[0, 0, 0, 1000, 0, 1000, 1000]
+	];
+}
+
+Player.prototype.updateMarriages = function() {
+	for (var i = 0; i < 4; i++) {
+		this.marriages[i][Player.KING] = 0;
+		this.marriages[i][Player.QUEEN] = 0;
+		this.marriages[i][Player.JACK] = 0;
+	}
+
+	for (var i = 0; i < this.hand.length; i++) {
+		if (this.hand[i].rank === 13)
+			this.marriages[this.hand[i].suit][Player.KING]++;
+		else if (this.hand[i].rank === 12)
+			this.marriages[this.hand[i].suit][Player.QUEEN]++;
+		else if (this.hand[i].rank === 11)
+			this.marriages[this.hand[i].suit][Player.JACK]++;
+	}
+
+	for (var i = 0; i < 4; i++) {
+		this.marriages[i][Player.KING + Player.QUEEN] = Math.min(
+			this.marriages[i][Player.KING + Player.QUEEN],
+			this.marriages[i][Player.KING],
+			this.marriages[i][Player.QUEEN]
+		);
+		this.marriages[i][Player.KING + Player.JACK] = Math.min(
+			this.marriages[i][Player.KING + Player.JACK],
+			this.marriages[i][Player.KING],
+			this.marriages[i][Player.JACK]
+		);
+		this.marriages[i][Player.QUEEN + Player.JACK] = Math.min(
+			this.marriages[i][Player.QUEEN + Player.JACK],
+			this.marriages[i][Player.QUEEN],
+			this.marriages[i][Player.JACK]
+		);
+	}
 }
 
 module.exports = Player;
