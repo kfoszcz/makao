@@ -27,6 +27,10 @@ Card.sortCards = function(hand) {
     return hand;
 }
 
+Card.fromString = function(str) {
+    return new Card(Card.suits.indexOf(str[0]), Card.ranks.indexOf(str[1]));
+}
+
 function shuffleDeck(deck) {
     var i = deck.length, j, tmp;
     while (--i) {

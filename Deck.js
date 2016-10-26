@@ -29,4 +29,11 @@ Deck.prototype.size = function() {
 	return this.deck.length - this.marker;
 }
 
+Deck.prototype.loadState = function(cards, marker) {
+	this.deck = [];
+	for (var i = 0; i < cards.length; i++)
+		this.deck.push(Card.fromString(cards[i]));
+	this.marker = marker;
+}
+
 module.exports = Deck;

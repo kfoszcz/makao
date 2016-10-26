@@ -3,6 +3,7 @@ body {
     padding: 0;
     font-family: Helvetica;
     font-size: 2em;
+    overflow: hidden;
 }
 
 h3 {
@@ -159,6 +160,34 @@ div#player-east, div#player-west {
     justify-content: space-around;
 }
 
+/* desk */
+div#last-trick {
+    width: auto;
+}
+
+div.desk-last {
+    display: flex;
+    justify-content: space-between;
+    width: 32%;
+    height: 40%;
+    background: #167f28;
+    position: fixed;
+    top: 30%;
+    left: 24%;
+    z-index: 200;
+}
+
+div.desk-close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    font-size: 38px;
+    line-height: 16px;
+    text-align: center;
+}
+
 div.desk {
     float: left;
     display: flex;
@@ -168,7 +197,7 @@ div.desk {
     background: #29a53e;
 }
 
-div#desk-west, div#desk-east {
+div.desk-west, div.desk-east {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -176,7 +205,7 @@ div#desk-west, div#desk-east {
     height: 100%;
 }
 
-div#desk-center {
+div.desk-center {
     width: 33%;
     height: 100%;
     display: flex;
@@ -185,7 +214,7 @@ div#desk-center {
     text-align: center;
 }
 
-div#desk-north {
+div.desk-north {
     padding-top: 5px;
     display: flex;
     justify-content: center;
@@ -193,7 +222,7 @@ div#desk-north {
     overflow-x: visible;
 }
 
-div#desk-south {
+div.desk-south {
     padding-bottom: 5px;
     display: flex;
     justify-content: center;
@@ -205,6 +234,8 @@ div.scorecard {
     width: 100%;
     height: 50%;
     background: #45d29e;
+    display: flex;
+    flex-direction: column;
 }
 
 div.chat {
@@ -222,6 +253,7 @@ div#corner-top-right {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    align-items: center;
 }
 
 div.info {
@@ -323,13 +355,8 @@ div.facedown {
 }
 
 /* score card */
-
-div.scorecard {
-    display: flex;
-    flex-direction: column;
-}
-
 div.score-table {
+    position: relative;
     display: table;
     table-layout: fixed;
     width: 100%;
@@ -339,9 +366,11 @@ div.score-table {
 }
 
 div.score-window {
+    margin-top: 23px;
     width: 100%;
     height: 100%;
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 div.score-window::-webkit-scrollbar {
@@ -358,8 +387,15 @@ div.score-window::-webkit-scrollbar-thumb {
     outline: 1px solid slategrey;
 }
 
-div.score-header {
+div.score-table-header {
+    display: table;
+    table-layout: fixed;
+    font-size: 0.6em;
+    color: white;
+    border-collapse: collapse;
     font-weight: bold;
+    position: absolute;
+    z-index: 5;
 }
 
 div.score-row {
@@ -383,4 +419,43 @@ div.score-item {
     border-left: 1px blue solid;
     border-collapse: collapse;
     display: table-cell;
+}
+
+/* marriage window */
+div.marriage-window {
+    top: 60%;
+    left: 40%;
+    margin-left: -5.3%;
+    width: 10.6%;
+    /*height: 100px;*/
+
+    background: #1e7777;
+    display: flex;
+    color: white;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    user-select: none;
+    -webkit-user-select: none;
+    border-radius: 5px;
+    position: fixed;
+    z-index: 100;
+}
+
+div.marriage-top {
+    width: 100%;
+    border-bottom: 1px white solid;
+}
+
+div.marriage-option {
+    border-right: 1px white solid;
+    flex-grow: 1;
+}
+
+div.marriage-option:hover {
+    cursor: pointer;
+    background: #1e9999;
+}
+
+div.marriage-option:last-child {
+    border-right: 0;
 }

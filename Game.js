@@ -18,6 +18,7 @@ function Game(players, options) {
 	this.trump = null;
 	this.trumpChanged = false;
 	this.board = [[], [], [], []];
+	this.lastBoard = [[], [], [], []];
 	this.best = null;
 	this.bestValue = 0;
 	this.players = players;
@@ -27,6 +28,7 @@ function Game(players, options) {
 	this.maxValueSuit = null;
 	this.showCards = [];
 	this.totalExtra = 0;
+	this.marriageOptions = [];
 }
 
 Game.PHASE_BIDDING = 0;
@@ -41,6 +43,13 @@ Game.NEW_DEAL = 2;
 Game.FIRST_ORBIT = 4;
 Game.END_GAME = 8;
 Game.ADD_EXTRA = 16;
+Game.CHOOSE_MARRIAGE = 32;
+
+Game.testCards = [
+	'HA', 'HQ', 'HK', 'HK', 'HQ', 'HJ', 'H2', 'S5', 'S3', 'S3', 'S2', 'S2',
+	'DA', 'DA', 'DA', 'DA', 'D4', 'D3', 'D2', 'SA', 'SJ', 'SJ', 'S4', 'S2',
+	'H7'
+];
 
 Game.prototype.playerIter = function() {
 	var result = this.players[this.seats[this.iter]];
@@ -102,6 +111,8 @@ Game.prototype.dealCards = function() {
 	if (this.options.always_shuffle || cardsNeeded > this.deck.size())
 		this.deck.shuffle();
 
+	// this.deck.loadState(Game.testCards, 0);
+
 	for (var i = 0; i < this.playersCount; i++)
 		this.players[this.seats[i]].hand = Card.sortCards(this.deck.draw(this.deal));
 
@@ -135,6 +146,7 @@ Game.prototype.boardValue = function(cards) {
 Game.prototype.initDeal = function() {
 	this.trumpChanged = false;
 	this.totalExtra = 0;
+	this.marriageOptions = [];
 	var player = null;
 	while (player = this.playerIter()) {
 		player.tricks = 0;
@@ -144,6 +156,14 @@ Game.prototype.initDeal = function() {
 }
 
 Game.prototype.move = function(type, value, marriage) {
+	if (type == 2) {
+		if (this.marriageOptions.indexOf(value) === -1)
+			return false;
+		this.request -= Game.CHOOSE_MARRIAGE;
+		this.request |= Game.ADD_EXTRA;
+		this.players[this.extra].tricks += value;
+		return true;
+	}
 	if (type == Game.PHASE_BIDDING) {
 		this.players[this.current].declared = value;
 		this.current = this.nextPlayer(this.current);
@@ -183,6 +203,11 @@ Game.prototype.move = function(type, value, marriage) {
 			this.best = this.current;
 		}
 
+		if (this.current === this.best && this.current !== this.leader && this.marriageBest(value)) {
+			this.extra = this.current;
+			this.request |= Game.CHOOSE_MARRIAGE;
+		}
+
 		// add quads points
 		if (value.length === this.options.decks && this.current === this.best && this.sameCards(value)) {
 			this.extra = this.current;
@@ -198,8 +223,6 @@ Game.prototype.move = function(type, value, marriage) {
 			this.current = this.best;
 			this.leader = this.best;
 			this.bestValue = 0;
-			for (var i = 0; i < 4; i++)
-				this.board[i] = [];
 			this.request |= Game.NEW_ORBIT;
 
 			if (this.players[this.leader].hand.length == 0) {
@@ -219,6 +242,13 @@ Game.prototype.move = function(type, value, marriage) {
 		}
 
 		return true;
+	}
+}
+
+Game.prototype.clearBoard = function() {
+	for (var i = 0; i < 4; i++) {
+		this.lastBoard[i] = this.board[i];
+		this.board[i] = [];
 	}
 }
 
@@ -367,6 +397,40 @@ Game.prototype.marriageCard = function(card) {
 	return 0;
 }
 
+Game.prototype.marriageBest = function(cards) {
+	this.marriageOptions = [];
+	if (!this.onlySuit(cards, cards[0].suit))
+		return false;
+	var helper = [0, 0, 0, 3000, 0, 3000, 3000];
+	var player = this.players[this.current];
+	var suit = cards[0].suit;
+	for (var i = 0; i < cards.length; i++) {
+		if (cards[i].rank == 13)
+			helper[Player.KING]++;
+		else if (cards[i].rank == 12)
+			helper[Player.QUEEN]++;
+		else if (this.options.half_marriages && cards[i].rank == 11)
+			helper[Player.JACK]++;
+	}
+	helper[Player.KING + Player.QUEEN] = Math.min(player.marriages[suit][Player.KING + Player.QUEEN], helper[Player.KING], helper[Player.QUEEN]);
+	helper[Player.KING + Player.JACK] = Math.min(player.marriages[suit][Player.KING + Player.JACK], helper[Player.KING], helper[Player.JACK]);
+	helper[Player.QUEEN + Player.JACK] = Math.min(player.marriages[suit][Player.QUEEN + Player.JACK], helper[Player.QUEEN], helper[Player.JACK]);
+	var full = helper[Player.KING + Player.QUEEN];
+	var half = Math.max(helper[Player.KING + Player.JACK], helper[Player.QUEEN + Player.JACK]);
+	for (var i = 1; i <= full; i++)
+		this.marriageOptions.push(this.suitValue(suit) * Math.pow(i, 2));
+	for (var i = 1; i <= half; i++)
+		this.marriageOptions.push(this.suitValue(suit) * Math.pow(i, 2) / 2);
+	if (this.marriageOptions.length > 0) {
+		this.marriageOptions.push(0);
+		this.marriageOptions.sort(function(a, b){return a - b});
+		console.log(this.marriageOptions);
+		return true;
+	}
+	else
+		return false;
+}
+
 Game.prototype.getReconnectState = function(playerId) {
 	var result = {};
 
@@ -384,6 +448,7 @@ Game.prototype.getReconnectState = function(playerId) {
 		}
 
 	result.board = this.board;
+	result.lastBoard = this.lastBoard;
 	result.current = this.current;
 	result.deal = this.deal;
 	result.start = this.options.deal_start;

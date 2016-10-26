@@ -42,7 +42,7 @@ function cardClass(card) {
 }
 
 function createScoreHeader() {
-    $('.score-table').append('<div class="score-row score-header"></div>');
+    $('.score-table-header').append('<div class="score-row score-header"></div>');
     $('.score-header').append('<div class="score-index">#</div>');
     for (var i = 0; i < 4; i++)
         if (names[i])
@@ -61,6 +61,11 @@ function appendScoreRow(scores, deal) {
             row.append('<div class="score-item">' + scores[i] + '</div>');
     $('.score-table').append(row);
     $('.score-window').scrollTop($('.score-window')[0].scrollHeight);
+    updateRowWidth();
+}
+
+function updateRowWidth() {
+    $('.score-table-header').width($('.score-row').last().width());
 }
 
 function declareIncrease() {
@@ -100,6 +105,7 @@ var moveValue = null;
 var moveMarriage = null;
 var tricks = [];
 var board = [];
+var lastBoard = [];
 var declared = [0, 0, 0, 0];
 var currentPlayer = 0;
 var selectedCards = [];
@@ -137,7 +143,6 @@ function reconnectState(state) {
     $('#ready-button').hide();
     startGame();
     trumpReceive(state.topCard);
-    updateCurrentPlayer(state.current);
     handSizes = state.handSizes;
     phase = state.phase;
     dealNumber = state.deal;
@@ -180,6 +185,7 @@ function reconnectState(state) {
         for (var i = 0; i < 4; i++)
             if (names[i]) {
                 drawBoard(i, state.board[i]);
+                drawBoard(i, state.lastBoard[i], true);
                 playLength = Math.max(playLength, state.board[i].length);
             }
     }
@@ -253,10 +259,14 @@ function drawMyHand(cards) {
     $('div.card-clickable').hover(cardOver, cardOut);
 }
 
-function drawBoard(player, cards) {
+function drawBoard(player, cards, last) {
     player = seat(player);
-    for (var i = 0; i < cards.length; i++)
-        board[player].append(create_card(cards[i]).addClass('board'));
+    for (var i = 0; i < cards.length; i++) {
+        if (last)
+            lastBoard[player].append(create_card(cards[i]).addClass('board'));
+        else
+            board[player].append(create_card(cards[i]).addClass('board'));
+    }
 }
 
 // chat functions
@@ -286,6 +296,7 @@ function playerReady() {
 
 function startGame() {
     $('.score-table').empty();
+    $('.score-table-header').empty();
     $('.info').show();
     $('#waiting').hide();
     for (var i = 0; i < 4; i++) {
@@ -301,6 +312,7 @@ function startGame() {
 function endGame() {
     nicks[currentPlayer].removeClass('current-player');
     $('.number-spinner').hide();
+    $('.marriage-window').hide();
     $('.hand').empty();
     $('.hand').hide();
     $('.tricks').hide();
@@ -416,8 +428,6 @@ function cardClicked() {
             var card = selectorToCard($('.hovered').first());
             var marriageLow = marriageCards(card, true);
             var marriageHigh = marriageCards(card, false);
-            console.log($(marriageHigh));
-            console.log($(marriageLow));
 
             if (marriageLow && marriageLow.length >= len)
                 marriageLow.addClass('highlighted');
@@ -495,10 +505,19 @@ function moveRequest(type, leader) {
         $('#number-value').text(Math.floor(dealNumber / playerCount));
         $('.number-spinner').show();
     }
+    else if (type == 2) {
+        console.log(leader);
+        $('.marriage-option').remove();
+        for (var i = 0; i < leader.length; i++)
+            $('.marriage-window').append('<div class="marriage-option">' + leader[i] + '</div>');
+        $('.marriage-option').click(function(){
+            moveSend(2, parseInt($(this).text()));
+        });
+        $('.marriage-window').show();
+    }
     else {
         playFirst = leader;
-        if (playFirst)
-            $(':hover').last().trigger('mouseenter');
+        $(':hover').last().trigger('mouseenter');
     }
 
 }
@@ -524,6 +543,9 @@ function moveOK(result) {
         totalBids += moveValue;
         $('#declarations-total').text(totalBids);
     }
+    else if (moveType == 2) {
+        $('.marriage-window').hide();
+    }
     else {
         board[0].append($('div.selected'));
         $('.card.selected').addClass('board');
@@ -532,6 +554,7 @@ function moveOK(result) {
         if (moveMarriage)
             trumpUpdate(moveMarriage[0].suit);
     }
+    $('.card.hovered').removeClass('hovered');
 }
 
 function moveReceive(player, type, value, marriage) {
@@ -570,8 +593,14 @@ function updateCurrentPlayer(player) {
 }
 
 function clearBoard() {
+    $('.desk-last .desk-board').empty();
+    $('#desk-east-last').append($('#desk-east').children());
+    $('#desk-north-last').append($('#desk-north').children());
+    $('#desk-west-last').append($('#desk-west').children());
+    $('#desk-south-last').append($('#desk-south').children());
+
     tricksDecrease($('#desk-south .card').length);
-    $('.desk-board').empty();
+    $('.desk .desk-board').empty();
     $('.card.show').attr('class', 'card facedown');
 }
 
@@ -584,12 +613,12 @@ $(document).ready(function(){
     $('#button-south').hide();
     $('#hand-south').show();
     return;*/
-
+    
     socket = io();
 
     $('#username').focus();
 
-    $('.info').hide();
+
 
     /*$('#hand-south').append(create_card(new Card(2, 6), true));
     $('#hand-south').append(create_card(new Card(2, 6), true));
@@ -608,6 +637,8 @@ $(document).ready(function(){
         focused = true;
     });
 
+    $(window).resize(updateRowWidth);
+
     socket.on('tableStatus', updateAllNames);
 
     socket.on('updateTable', updateTable);
@@ -623,6 +654,11 @@ $(document).ready(function(){
     socket.on('clearBoard', clearBoard);
 
     socket.on('reconnectState', reconnectState);
+
+    socket.on('ding', function(){
+        if (!focused)
+            snd.play();
+    });
 
     socket.on('scoresUpdate', function(scores){
         $('.score-row').last().remove();
@@ -682,6 +718,19 @@ $(document).ready(function(){
     board.push($('#desk-west'));
     board.push($('#desk-north'));
     board.push($('#desk-east'));
+
+    lastBoard.push($('#desk-south-last'));
+    lastBoard.push($('#desk-west-last'));
+    lastBoard.push($('#desk-north-last'));
+    lastBoard.push($('#desk-east-last'));
+
+    $('#last-trick').click(function(){
+        $('.desk-last').show();
+    });
+
+    $('.desk-close').click(function(){
+        $('.desk-last').hide();
+    });
 
     $('#number-value').on('wheel', function(e){
         var delta = e.originalEvent.deltaY;

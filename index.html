@@ -25,11 +25,12 @@
             <div class="tricks" id="tricks-north">-</div>
         </div>
         <div class="corner" id="corner-top-right">
-            <div class="info">
+            <div class="info button" id="last-trick" style="display: none;">Ostatnia lewa</div>
+            <div class="info" style="display: none;">
                 <div class="info-label">Zapowiedziano lew: </div>
                 <div class="info-value" id="declarations-total">-</div>
             </div>
-            <div class="info">
+            <div class="info" style="display: none;">
                 <div class="info-label">Pozostało lew: </div>
                 <div class="info-value" id="tricks-remaining">-</div>
             </div>
@@ -41,9 +42,9 @@
             <div class="tricks" id="tricks-west">-</div>
         </div>
         <div class="desk">
-            <div class="desk-board" id="desk-west"></div>
-            <div id="desk-center">
-                <div class="desk-board" id="desk-north"></div>
+            <div class="desk-board desk-west" id="desk-west"></div>
+            <div class="desk-center" id="desk-center">
+                <div class="desk-board desk-north" id="desk-north"></div>
                 <div id="username-request">
                     <label for="username">Nick:</label>
                     <input type="text" name="username" id="username">
@@ -55,10 +56,25 @@
                     <div class="number-button" id="number-incr">+</div>
                     <div class="number-confirm" id="number-ok">OK</div>
                 </div>
+                <div class="marriage-window" style="display: none;">
+                    <div class="marriage-top">Meldunek</div>
+                    <div class="marriage-option">0</div>
+                    <div class="marriage-option">3</div>
+                    <div class="marriage-option">6</div>
+                </div>
                 <div id="waiting">Oczekiwanie na start...</div>
-                <div class="desk-board" id="desk-south"></div>
+                <div class="desk-board desk-south" id="desk-south"></div>
             </div>
-            <div class="desk-board" id="desk-east"></div>
+            <div class="desk-board desk-east" id="desk-east"></div>
+        </div>
+        <div class="desk-last" style="display: none;">
+            <div class="desk-board desk-west" id="desk-west-last"></div>
+            <div class="desk-center" id="desk-center-last">
+                <div class="desk-board desk-north" id="desk-north-last"></div>
+                <div class="desk-board desk-south" id="desk-south-last"></div>
+            </div>
+            <div class="desk-board desk-east" id="desk-east-last"></div>
+            <div class="button desk-close">x</div>
         </div>
         <div class="player" id="player-east">
             <div class="button" id="button-east" onclick="seatMe(3)">Usiądź</div>
@@ -77,13 +93,16 @@
     </div><div class="sidebar">
         <div class="scorecard">
             <h3>Wyniki</h3>
+            <div>
+                <div class="score-table-header"></div>
+            </div>
             <div class="score-window">
                 <div class="score-table"></div>
             </div>
         </div>
         <div class="chat">
             <h3>Czat</h3>
-            <div id="chat-history"></div>
+            <div class="scrollable" id="chat-history"></div>
             <input type="text" name="chat-input" id="chat-input">
         </div>
     </div>

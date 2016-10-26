@@ -23,8 +23,8 @@ http.listen(3000, function(){
 
 var table = new Table(1);
 var gameOptions = {
-	'deal_start': 30,
-	'deal_end': 33,
+	'deal_start': 12,
+	'deal_end': 12,
 	'marriages': true,
 	'half_marriages': true,
 	'always_shuffle': false,
@@ -147,7 +147,12 @@ function newDeal(redeal) {
 }
 
 function requestMove() {
-	table.game.getCurrentPlayer().socket.emit('moveRequest', table.game.phase, table.game.current === table.game.leader);
+	if (table.game.request & Game.CHOOSE_MARRIAGE) {
+		table.game.getExtraPlayer().socket.emit('moveRequest', 2, table.game.marriageOptions);
+	}
+	else {
+		table.game.getCurrentPlayer().socket.emit('moveRequest', table.game.phase, table.game.current === table.game.leader);
+	}
 	table.game.getCurrentPlayer().socket.broadcast.emit('updateCurrentPlayer', table.game.current);
 }
 
@@ -223,13 +228,17 @@ io.on('connection', function(socket){
 		if (table.playersReady()) {
 			// start game
 			io.emit('chatReceive', 'Zaczynamy grę. Powodzenia!');
-			io.emit('chatReceive', 'Nie ma meldunków ani premii za czwórki.');
 			io.emit('startGame');
 			table.game = new Game(table.players, gameOptions);
 			// console.log(table.game);
 			table.game.init();
 			newDeal();
 			requestMove();
+		}
+		else {
+			for (var i = 0; i < 4; i++)
+				if (table.players[i] && !table.players[i].ready)
+					table.players[i].socket.emit('ding');
 		}
 	});
 
@@ -257,13 +266,22 @@ io.on('connection', function(socket){
 			console.log(logMsg);
 		}
 		var invalid = false;
-		if (!table.game.running || table.game.paused)
-			invalid = true;
-		else if (socket.id != table.game.getCurrentPlayer().id || locked)
-			invalid = true;
-		else if (type != table.game.phase)
+		if (!table.game.running || table.game.paused || locked)
 			invalid = true;
 
+		if (type == 2) {
+			if (socket.id != table.game.getExtraPlayer().id)
+				invalid = true;
+			if (table.game.marriageOptions.length == 0)
+				invalid = true;
+		}
+		else {
+			if (type != table.game.phase)
+				invalid = true;
+			else if (socket.id != table.game.getCurrentPlayer().id)
+				invalid = true;
+		}
+		
 		if (invalid) {
 			socket.emit('moveOK', false);
 			return false;
@@ -274,7 +292,13 @@ io.on('connection', function(socket){
 		socket.emit('moveOK', result);
 		if (result) {
 			var moveTimeout = 0;
-			socket.broadcast.emit('moveReceive', current, type, value, marriage);
+			if (type != 2)
+				socket.broadcast.emit('moveReceive', current, type, value, marriage);
+			if (table.game.request & Game.CHOOSE_MARRIAGE) {
+				console.log(table.game.marriageOptions);
+				requestMove();
+				return true;
+			}
 			if (table.game.request & Game.FIRST_ORBIT) {
 				io.emit('tricksInit');
 			}
@@ -291,6 +315,7 @@ io.on('connection', function(socket){
 				moveTimeout = 1000;
 				io.emit('tricksUpdate', table.game.best, table.game.getTrickWinner().tricks);
 				setTimeout(function(){
+					table.game.clearBoard();
 					io.emit('clearBoard');
 					locked = false;
 				}, 1000);
