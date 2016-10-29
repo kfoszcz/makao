@@ -1,3 +1,5 @@
+var Score = require('./Score.js');
+
 function Player(id, name, seat, socket) {
     this.id = id;
     this.name = name;
@@ -6,6 +8,7 @@ function Player(id, name, seat, socket) {
     this.ready = false;
     this.connected = true;
     this.admin = false;
+    this.status = 'connected';
 
     this.hand = [];
     this.declared = 0;
@@ -61,9 +64,11 @@ Player.prototype.removeCards = function(cards) {
 }
 
 Player.prototype.addScore = function(score) {
+	var lastCumulated = (this.scores.length > 0) ? this.scores.slice(-1)[0].cumulated : 0;
+	score.cumulated = lastCumulated + score.single;
+	score.declared = this.declared;
+	score.tricks = this.tricks;
 	this.scores.push(score);
-	var lastCumulated = (this.cumulated.length > 0) ? this.cumulated.slice(-1)[0] : 0;
-	this.cumulated.push(lastCumulated + score);
 }
 
 Player.prototype.resetScores = function() {
@@ -81,9 +86,9 @@ Player.prototype.resetMarriages = function() {
 }
 
 Player.prototype.getScore = function() {
-	if (this.cumulated.length == 0)
+	if (this.scores.length == 0)
 		return 0;
-	return this.cumulated.slice(-1)[0]
+	return this.scores.slice(-1)[0].cumulated;
 }
 
 Player.prototype.updateMarriages = function() {

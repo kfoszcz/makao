@@ -1,6 +1,7 @@
 var Player = require('./Player.js');
 var Deck = require('./Deck.js');
 var Card = require('./Card.js');
+var Score = require('./Score.js');
 
 function Game(players, options) {
 	this.options = options;
@@ -255,18 +256,18 @@ Game.prototype.clearBoard = function() {
 
 Game.prototype.calculateScore = function(player) {
 	if (player.declared === player.tricks)
-		return this.options.win_value + player.tricks;
+		return new Score(this.options.win_value + player.tricks, Score.SUCCESS);
 	else if (this.options.handicap && Math.abs(player.declared - player.tricks) === 1)
-		return Math.ceil((this.options.win_value + player.tricks) / 2);
+		return new Score(Math.ceil((this.options.win_value + player.tricks) / 2), Score.HANDICAP);
 	else
-		return 0;
+		return new Score(0, Score.FAIL);
 }
 
 Game.prototype.getScores = function() {
 	var result = [0, 0, 0, 0];
 	for (var i = 0; i < 4; i++)
 		if (this.players[i])
-			result[i] = this.players[i].cumulated.slice(-1)[0];
+			result[i] = this.players[i].scores.slice(-1)[0];
 	return result;
 }
 
@@ -276,7 +277,7 @@ Game.prototype.getAllScores = function() {
 		var row = [0, 0, 0, 0];
 		for (var j = 0; j < 4; j++)
 			if (this.players[j])
-				row[j] = this.players[j].cumulated[i];
+				row[j] = this.players[j].scores[i];
 		result.push(row);
 	}
 	return result;

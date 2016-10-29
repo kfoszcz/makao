@@ -186,13 +186,31 @@ io.on('connection', function(socket){
 		if (player) {
 			if (!table.game || !table.game.running) {
 				table.removePlayer(player.seat);
+				socket.broadcast.emit('updateTable', player.seat, null);
 			}
 			else {
 				table.game.paused = true;
 				player.connected = false;
+				player.status = 'disconnected';
+				socket.broadcast.emit('updatePlayerStatus', player.seat, player.status);
 			}
-			socket.broadcast.emit('updateTable', player.seat, null);
 			socket.broadcast.emit('chatReceive', 'Użytkownik <b>' + player.name + '</b> rozłączył się.');
+		}
+	});
+
+	socket.on('blur', function(){
+		var player = table.findPlayerById(socket.id);
+		if (player) {
+			player.status = 'inactive';
+			socket.broadcast.emit('updatePlayerStatus', player.seat, player.status);
+		}
+	});
+
+	socket.on('focus', function(){
+		var player = table.findPlayerById(socket.id);
+		if (player) {
+			player.status = 'connected';
+			socket.broadcast.emit('updatePlayerStatus', player.seat, player.status);
 		}
 	});
 
@@ -206,6 +224,9 @@ io.on('connection', function(socket){
 				socket.broadcast.emit('updateTable', seat, name);
 				socket.emit('chatReceive', 'Witaj <b>' + socket.name + '</b>!');
 			}
+			for (var i = 0; i < 4; i++)
+				if (table.players[i])
+					socket.emit('updatePlayerStatus', i, table.players[i].status);
 		}
 		else if (table.game.paused) {
 			var player = table.findPlayerByName(name);
@@ -220,10 +241,17 @@ io.on('connection', function(socket){
 			player.id = socket.id;
 			player.socket = socket;
 			socket.name = name;
+			player.status = 'connected';
 
 			socket.emit('seatResponse', true);
-			socket.broadcast.emit('updateTable', seat, name);
+			socket.broadcast.emit('updatePlayerStatus', player.seat, player.status);
 			socket.emit('chatReceive', 'Witaj ponownie <b>' + socket.name + '</b>!');
+			socket.emit('tableStatus', table.getPlayerNames(true));
+	
+			for (var i = 0; i < 4; i++)
+				if (table.players[i])
+					socket.emit('updatePlayerStatus', i, table.players[i].status);
+
 			socket.emit('reconnectState', table.game.getReconnectState(player.seat));
 
 			// when all players are connected, resume game

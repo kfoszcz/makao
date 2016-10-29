@@ -46,19 +46,30 @@ function createScoreHeader() {
     $('.score-header').append('<div class="score-index">#</div>');
     for (var i = 0; i < 4; i++)
         if (names[i])
-            $('.score-header').append('<div class="score-item">' + names[i] + '</div>');
+            $('.score-header').append('<div class="score-item score-item-header">' + names[i] + '</div>');
 }
 
 function appendScoreRow(scores, deal) {
-    if (!scores)
-        scores = ['', '', '', ''];
     if (!deal)
         deal = dealNumber;
     var row = $('<div class="score-row"></div>');
     row.append('<div class="score-index">' + deal + '</div>');
-    for (var i = 0; i < 4; i++)
-        if (names[i])
-            row.append('<div class="score-item">' + scores[i] + '</div>');
+    if (!scores) {
+        for (var i = 0; i < 4; i++)
+            if (names[i]) {
+                row.append('<div class="score-info"><span class="score-declared"></span><br><span class="score-taken">&nbsp;</span></div>');
+                row.append('<div class="score-item"></div>');
+            }
+    }
+    else {
+        for (var i = 0; i < 4; i++)
+            if (names[i]) {
+                row.append('<div class="score-info"><span class="score-declared">' + scores[i].declared
+                    + '</span><br><span class="score-taken ' + scoreClasses[scores[i].type]
+                    + '">' + scores[i].tricks + '</span></div>');
+                row.append('<div class="score-item">' + scores[i].cumulated + '</div>');
+            }
+    }
     $('.score-table').append(row);
     $('.score-window').scrollTop($('.score-window')[0].scrollHeight);
     updateRowWidth();
@@ -123,6 +134,11 @@ var totalBids = 0;
 var tricksLeft = 0;
 var gameOptions = null;
 var maxValueSuit = 0;
+var scoreClasses = [
+    'score-fail',
+    'score-handicap',
+    'score-success'
+];
 
 var spinnerMax = 300000;
 var opponentHandLength = 15;
@@ -687,6 +703,12 @@ function updateCurrentPlayer(player) {
     currentPlayer = player;
 }
 
+function updatePlayerStatus(player, status) {
+    player = seat(player);
+    nicks[player].removeClass('connected inactive disconnected');
+    nicks[player].addClass(status);
+}
+
 function clearBoard() {
     tricksDecrease($('#desk-south .card').length);
     $('.desk-last .desk-board').empty();
@@ -726,10 +748,18 @@ $(document).ready(function(){
 
     $(window).blur(function(){
         focused = false;
+        if (seated) {
+            updatePlayerStatus(mySeat, 'inactive');
+            socket.emit('blur');
+        }
     });
 
     $(window).focus(function(){
         focused = true;
+        if (seated) {
+            updatePlayerStatus(mySeat, 'connected');
+            socket.emit('focus');
+        }
     });
 
     $(window).resize(updateRowWidth);
@@ -739,6 +769,8 @@ $(document).ready(function(){
     $('.marriage-option-no').click(function(){
         moveSend(2, 0);
     });
+
+    socket.on('updatePlayerStatus', updatePlayerStatus);
 
     socket.on('tableStatus', updateAllNames);
 

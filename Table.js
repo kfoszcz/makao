@@ -47,10 +47,10 @@ Table.prototype.removePlayer = function(seat) {
     return false;
 }
 
-Table.prototype.getPlayerNames = function() {
+Table.prototype.getPlayerNames = function(disconnected) {
     var result = [];
     for (var i = 0; i < 4; i++) {
-        if (this.players[i] && this.players[i].connected)
+        if (this.players[i] && (disconnected || this.players[i].connected))
             result.push(this.players[i].name);
         else
             result.push(undefined);
