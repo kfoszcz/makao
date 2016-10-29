@@ -23,8 +23,8 @@ http.listen(3000, function(){
 
 var table = new Table(1);
 var gameOptions = {
-	'deal_start': 12,
-	'deal_end': 12,
+	'deal_start': 1,
+	'deal_end': 24,
 	'marriages': true,
 	'half_marriages': true,
 	'always_shuffle': false,
@@ -156,9 +156,28 @@ function requestMove() {
 	table.game.getCurrentPlayer().socket.broadcast.emit('updateCurrentPlayer', table.game.current);
 }
 
+function sendFinalResults() {
+	var msgs = [
+		'Gratulacje, jesteś zwycięzcą! :)',
+		'Zająłeś drugie miejsce.',
+		'Zająłeś trzecie miejsce.',
+		'Zająłeś czwarte miejsce.'
+	];
+
+	var player = null;
+	while (player = table.game.playerIter())
+		player.socket.emit('chatReceive', msgs[table.game.getPlayerPlace(player.seat) - 1]);
+}
+
 io.on('connection', function(socket){
 	// emit table status to connecting client
-	// console.log('User connected #' + socket.id + ' from ' + socket.request.connection.remoteAddress);
+	// console.log(socket);
+	var ipAddr = socket.request.connection.remoteAddress;
+	ipAddr = ipAddr.slice(ipAddr.lastIndexOf(':') + 1);
+	if (ipAddr == '1')
+		ipAddr = 'localhost';
+	console.log(ipAddr);
+	socket.broadcast.emit('chatReceive', 'Połączenie z ' + ipAddr);
 	socket.emit('tableStatus', table.getPlayerNames());
 
 	socket.on('disconnect', function(){
@@ -228,10 +247,10 @@ io.on('connection', function(socket){
 		if (table.playersReady()) {
 			// start game
 			io.emit('chatReceive', 'Zaczynamy grę. Powodzenia!');
-			io.emit('startGame');
 			table.game = new Game(table.players, gameOptions);
 			// console.log(table.game);
 			table.game.init();
+			io.emit('startGame', table.game.options);
 			newDeal();
 			requestMove();
 		}
@@ -326,7 +345,7 @@ io.on('connection', function(socket){
 				table.resetReady();
 				setTimeout(function(){
 					io.emit('endGame');
-					io.emit('chatReceive', 'Koniec gry :)');
+					sendFinalResults();
 					table.game.running = false;
 					locked = false;
 				}, 2000);

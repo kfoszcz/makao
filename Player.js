@@ -80,6 +80,12 @@ Player.prototype.resetMarriages = function() {
 	];
 }
 
+Player.prototype.getScore = function() {
+	if (this.cumulated.length == 0)
+		return 0;
+	return this.cumulated.slice(-1)[0]
+}
+
 Player.prototype.updateMarriages = function() {
 	for (var i = 0; i < 4; i++) {
 		this.marriages[i][Player.KING] = 0;

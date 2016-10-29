@@ -121,9 +121,18 @@ var trumpChanged = false;
 var totalExtra = 0;
 var totalBids = 0;
 var tricksLeft = 0;
+var gameOptions = null;
+var maxValueSuit = 0;
 
 var spinnerMax = 300000;
 var opponentHandLength = 15;
+var initialTrump = 0;
+
+// marriage mode variables
+var marriageMode = false;
+var marriageHigh = null;
+var marriageLow = null;
+var prevCard = null;
 
 var snd = new Audio('notification.mp3');
 
@@ -139,9 +148,22 @@ function seatMe(place) {
     }
 }
 
+function suitValue(suit) {
+    if (suit == maxValueSuit)
+        return gameOptions.suit_values[initialTrump];
+    if (suit == initialTrump)
+        return gameOptions.suit_values[maxValueSuit];
+    return gameOptions.suit_values[suit];
+}
+
+function marriageValue(suit, len, half) {
+    var divBy = half ? 2 : 1;
+    return suitValue(suit) * Math.pow(len, 2) / divBy;
+}
+
 function reconnectState(state) {
     $('#ready-button').hide();
-    startGame();
+    startGame(state.gameOptions);
     trumpReceive(state.topCard);
     handSizes = state.handSizes;
     phase = state.phase;
@@ -294,7 +316,15 @@ function playerReady() {
     socket.emit('playerReady');
 }
 
-function startGame() {
+function startGame(options) {
+    gameOptions = options;
+    var bestVal = 0;
+    for (var i = 0; i < 4; i++)
+        if (options.suit_values[i] > bestVal) {
+            maxValueSuit = i;
+            bestVal = options.suit_values[i];
+        }
+
     $('.score-table').empty();
     $('.score-table-header').empty();
     $('.info').show();
@@ -362,12 +392,99 @@ function marriageCards(card, lower) {
     else if (card.rank == 11)
         marriageRank = lower ? 12 : 13;
     if (marriageRank == 0)
-        return null;
+        return [];
     var val = card.suit + '-' + marriageRank;
     return $('#hand-south [value="' + val + '"]');//.addClass('highlighted');
 }
 
+function cardRankName(rank) {
+    if (rank == 13)
+        return 'króli';
+    else if (rank == 12)
+        return 'dam';
+    else if (rank == 11)
+        return 'waletów';
+    return false;
+}
+
+function cardCountName(count) {
+    if (count == 2)
+        return 'parą';
+    else if (count == 3)
+        return 'trójką';
+    else if (count == 4)
+        return 'czwórką';
+    return false;
+}
+
+function enterMarriageMode(confirmation) {
+    marriageMode = true;
+    var toSend = [];
+    var toMarry = [];
+    $('#desk-south div.card').addClass('board');
+    $('div.card.board').removeClass('hovered');
+    var marriageLength = $('#desk-south div.card').length;
+    var card = selectorToCard($('#desk-south div.card').first());
+    $('.marriage-no').off();
+    $('.marriage-yes').remove();
+    if (confirmation) {
+        $('.marriage-choose .marriage-description').text('Masz meldunek w tym kolorze. Czy mimo to chcesz zagrać '
+            + cardCountName(marriageLength) + ' ' + cardRankName(card.rank) + '?');
+        $('.marriage-no').text('Tak');
+        $('.marriage-cancel').text('Nie');
+    }
+    else {
+        $('.marriage-choose .marriage-description').text('Wybierz opcję:');
+        $('.marriage-no').text('Nie melduj');
+        $('.marriage-cancel').text('Cofnij');
+        if (marriageHigh.length >= marriageLength && card.rank > 11)
+            $('.marriage-no').before('<div class="marriage-cloud marriage-yes marriage-high">Zamelduj ' + marriageValue(card.suit, marriageLength, false) + '</div>');
+        if (marriageHigh.length >= marriageLength && card.rank == 11)
+            $('.marriage-no').before('<div class="marriage-cloud marriage-yes marriage-high">Zamelduj ' + marriageValue(card.suit, marriageLength, true) + '</div>');
+        if (marriageLow.length >= marriageLength)
+            $('.marriage-no').before('<div class="marriage-cloud marriage-yes marriage-low">Zamelduj ' + marriageValue(card.suit, marriageLength, true) + '</div>');
+    }
+    $('.marriage-yes').hover(function(){
+        if ($(this).hasClass('marriage-high'))
+            marriageHigh.slice(0, marriageLength).addClass('hovered');
+        else
+            marriageLow.slice(0, marriageLength).addClass('hovered');
+    }, function(){
+        if ($(this).hasClass('marriage-high'))
+            marriageHigh.slice(0, marriageLength).removeClass('hovered');
+        else
+            marriageLow.slice(0, marriageLength).removeClass('hovered');
+    });
+    $('.marriage-yes').click(function(){
+        var marry = selectorToCard('div.card.hovered');
+        for (var i = 0; i < marriageLength; i++) {
+            toSend.push(card);
+            toMarry.push(marry);
+        }
+        moveSend(1, toSend, toMarry);
+    });
+    $('.marriage-no').click(function(){
+        for (var i = 0; i < marriageLength; i++)
+            toSend.push(card);
+        moveSend(1, toSend);
+    });
+    $('.marriage-choose').show();
+}
+
+function marriageBack() {
+    $('#desk-south div.card').removeClass('board');
+    if (prevCard.length)
+        prevCard.after($('#desk-south div.card'));
+    else
+        $('#hand-south').prepend($('#desk-south div.card'));
+
+    $('.marriage-choose').hide();
+    marriageMode = false;
+}
+
 function cardOver() {
+    if (marriageMode)
+        return;
     $(this).addClass('hovered');
     if ((myTurn && playFirst) || phase == 0) {
         var val = $(this).attr('value');
@@ -376,6 +493,8 @@ function cardOver() {
 }
 
 function cardOut() {
+    if (marriageMode)
+        return;
     $(this).removeClass('hovered');
     if ((myTurn && playFirst) || phase == 0) {
         var val = $(this).attr('value');
@@ -384,7 +503,7 @@ function cardOut() {
 }
 
 function cardClicked() {
-    if (currentPlayer != 0 || phase == 0)
+    if (currentPlayer != 0 || phase == 0 || marriageMode)
         return;
 
     var toSend = [];
@@ -392,59 +511,25 @@ function cardClicked() {
 
     // we are first to act
     if (playFirst) {
-        var marriageLength = $('.marriage-lead').length;
+        var len = $('.hovered').length;
+        var card = selectorToCard($('.hovered').first());
+        marriageLow = marriageCards(card, true);
+        marriageHigh = marriageCards(card, false);
 
-        // marriage choose mode
-        if (marriageLength) {
-            var card = selectorToCard($(this));
+        if (!marriageLow.length && !marriageHigh.length) {
+            $('.hovered').addClass('selected');
+            for (var i = 0; i < len; i++)
+                toSend.push(card);
 
-            // no marriage
-            if ($(this).hasClass('marriage-lead')) {
-                $('.marriage-lead').addClass('selected');
-                for (var i = 0; i < marriageLength; i++)
-                    toSend.push(card);
-                moveSend(1, toSend);
-            }
-
-            // marriage
-            else if ($(this).hasClass('highlighted')) {
-                $('.marriage-lead').addClass('selected');
-                var lead = selectorToCard($('.marriage-lead').first());
-                for (var i = 0; i < marriageLength; i++) {
-                    toSend.push(lead);
-                    toMarry.push(card);
-                }
-                moveSend(1, toSend, toMarry);
-            }
-
-            // cancelled
-            else
-                $('.card-clickable').removeClass('highlighted marriage-lead hovered');
+            // show confirmation
+            moveSend(1, toSend);
         }
 
-        // normal mode
         else {
-            var len = $('.hovered').length;
-            var card = selectorToCard($('.hovered').first());
-            var marriageLow = marriageCards(card, true);
-            var marriageHigh = marriageCards(card, false);
-
-            if (marriageLow && marriageLow.length >= len)
-                marriageLow.addClass('highlighted');
-
-            if (marriageHigh && marriageHigh.length >= len)
-                marriageHigh.addClass('highlighted');
-
-            if ($('.highlighted').length == 0) {
-                $('.hovered').addClass('selected');
-                for (var i = 0; i < len; i++)
-                    toSend.push(card);
-                moveSend(1, toSend);
-            }
-
-            else {
-                $('.hovered').addClass('marriage-lead');
-            }
+            var confirmation = (marriageLow.length < len && marriageHigh.length < len);
+            prevCard = $('.hovered').first().prev();
+            $('#desk-south').append($('.hovered'));
+            enterMarriageMode(confirmation);
         }
     }
     
@@ -478,6 +563,7 @@ function tricksClear() {
 }
 
 function trumpReceive(card) {
+    initialTrump = card.suit;
     $('#trump').html(create_card(card));
 }
 
@@ -502,16 +588,15 @@ function moveRequest(type, leader) {
     if (!focused)
         snd.play();
     if (type == 0) {
-        $('#number-value').text(Math.floor(dealNumber / playerCount));
+        $('#number-value').text(Math.round(dealNumber / playerCount));
         $('.number-spinner').show();
     }
     else if (type == 2) {
-        console.log(leader);
-        $('.marriage-option').remove();
-        for (var i = 0; i < leader.length; i++)
-            $('.marriage-window').append('<div class="marriage-option">' + leader[i] + '</div>');
-        $('.marriage-option').click(function(){
-            moveSend(2, parseInt($(this).text()));
+        $('.marriage-option-yes').remove();
+        for (var i = leader.length - 1; i > 0; i--)
+            $('.marriage-option-no').before('<div class="marriage-cloud marriage-option-yes" value="' + leader[i] + '">Zamelduj ' + leader[i] + '</div>');
+        $('.marriage-option-yes').click(function(){
+            moveSend(2, parseInt($(this).attr('value')));
         });
         $('.marriage-window').show();
     }
@@ -531,7 +616,11 @@ function moveSend(type, value, marriage) {
 
 function moveOK(result) {
     if (!result) {
-        $('.card-clickable').removeClass('selected hovered marriage-lead highlighted');
+        if (marriageMode) {
+            $('.card.hovered').removeClass('hovered');
+            marriageBack();
+        }
+        $('.card-clickable').removeClass('selected hovered');
         $(':hover').last().trigger('mouseleave');
         return;
     }
@@ -547,12 +636,18 @@ function moveOK(result) {
         $('.marriage-window').hide();
     }
     else {
-        board[0].append($('div.selected'));
-        $('.card.selected').addClass('board');
-        $('.card.board').removeClass('selected hovered card-clickable marriage-lead highlighted');
-        $('.card-clickable').removeClass('highlighted');
-        if (moveMarriage)
+        if (moveMarriage) {
             trumpUpdate(moveMarriage[0].suit);
+        }
+        else {
+            board[0].append($('div.selected'));
+        }
+        if (marriageMode) {
+            marriageMode = false;
+            $('.marriage-choose').hide();
+        }
+        $('.card.selected').addClass('board');
+        $('.card.board').removeClass('selected hovered card-clickable');
     }
     $('.card.hovered').removeClass('hovered');
 }
@@ -593,13 +688,13 @@ function updateCurrentPlayer(player) {
 }
 
 function clearBoard() {
+    tricksDecrease($('#desk-south .card').length);
     $('.desk-last .desk-board').empty();
     $('#desk-east-last').append($('#desk-east').children());
     $('#desk-north-last').append($('#desk-north').children());
     $('#desk-west-last').append($('#desk-west').children());
     $('#desk-south-last').append($('#desk-south').children());
 
-    tricksDecrease($('#desk-south .card').length);
     $('.desk .desk-board').empty();
     $('.card.show').attr('class', 'card facedown');
 }
@@ -638,6 +733,12 @@ $(document).ready(function(){
     });
 
     $(window).resize(updateRowWidth);
+
+    $('.marriage-cancel').click(marriageBack);
+
+    $('.marriage-option-no').click(function(){
+        moveSend(2, 0);
+    });
 
     socket.on('tableStatus', updateAllNames);
 

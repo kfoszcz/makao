@@ -8,6 +8,7 @@ body {
 
 h3 {
     margin: 0;
+    color: #1e1eca;
 }
 
 div.container {
@@ -423,39 +424,69 @@ div.score-item {
 
 /* marriage window */
 div.marriage-window {
-    top: 60%;
-    left: 40%;
-    margin-left: -5.3%;
-    width: 10.6%;
-    /*height: 100px;*/
-
-    background: #1e7777;
-    display: flex;
     color: white;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    user-select: none;
-    -webkit-user-select: none;
-    border-radius: 5px;
     position: fixed;
-    z-index: 100;
+    left: 40%;
+    top: 60%;
+    width: 32%;
+    margin-left: -16%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    z-index: 2;
+    font-size: 0.45em;
 }
 
-div.marriage-top {
-    width: 100%;
-    border-bottom: 1px white solid;
+div.marriage-option-no:hover {
+    background-color: #e80808;
 }
 
-div.marriage-option {
-    border-right: 1px white solid;
+div.marriage-option-yes:hover {
+    background-color: #3ae43a;
+}
+
+/* marriage mode choose */
+div.marriage-choose {
+    color: white;
+    position: fixed;
+    left: 40%;
+    top: 60%;
+    width: 32%;
+    margin-left: -16%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    z-index: 2;
+    font-size: 0.45em;
+}
+
+div.marriage-cloud {
+    background-color: black;
+    border: 1px white solid;
+    border-radius: 5px;
+    text-align: center;
     flex-grow: 1;
-}
-
-div.marriage-option:hover {
+    flex-shrink: 1;
+    padding: 5px 0px;
+    margin: 5px 10px;
     cursor: pointer;
-    background: #1e9999;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
-div.marriage-option:last-child {
-    border-right: 0;
+div.marriage-description {
+    width: 100%;
+    cursor: default;
+}
+
+div.marriage-yes:hover {
+    background-color: #3ae43a;
+}
+
+div.marriage-no:hover {
+    background-color: #e80808;
+}
+
+div.marriage-cancel:hover {
+    background-color: #131694;
 }

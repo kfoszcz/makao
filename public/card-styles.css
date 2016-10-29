@@ -30,7 +30,7 @@ div.card-clickable {
 }
 
 div.card-clickable.hovered {
-    top: -15px;
+    top: -10px;
     cursor: pointer;
 }
 
@@ -41,16 +41,6 @@ div.card-clickable:hover {
 
 div.card-clickable.selected {
     top: -15px;
-}
-
-div.card.highlighted {
-    border: 1px solid yellow;
-    top: -5px;
-}
-
-div.card.marriage-lead {
-    border: 1px solid red;
-    top: -5px;
 }
 
 div.card.facedown {

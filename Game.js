@@ -161,6 +161,7 @@ Game.prototype.move = function(type, value, marriage) {
 			return false;
 		this.request -= Game.CHOOSE_MARRIAGE;
 		this.request |= Game.ADD_EXTRA;
+		this.totalExtra += value;
 		this.players[this.extra].tricks += value;
 		return true;
 	}
@@ -431,6 +432,15 @@ Game.prototype.marriageBest = function(cards) {
 		return false;
 }
 
+Game.prototype.getPlayerPlace = function(playerId) {
+	var result = 1;
+	var myScore = this.players[playerId].getScore();
+	for (var i = 0; i < 4; i++)
+		if (this.players[i] && this.players[i].getScore() > myScore)
+			result++;
+	return result;
+}
+
 Game.prototype.getReconnectState = function(playerId) {
 	var result = {};
 
@@ -458,6 +468,7 @@ Game.prototype.getReconnectState = function(playerId) {
 	result.trump = this.trump;
 	result.trumpChanged = this.trumpChanged;
 	result.totalExtra = this.totalExtra;
+	result.gameOptions = this.options;
 
 	return result;
 }
