@@ -9,32 +9,6 @@ function create_card(card, my) {
     if (my)
         result.addClass('card-clickable');
     return result;
-
-    var colors = ['black', 'red', 'red', 'black', 'facedown'];
-    var suits = ['&clubs;', '&diams;', '&hearts;', '&spades;', '&nbsp;'];
-    var values = ['', '&nbsp;', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-    var result = document.createElement('div');
-    result.className = 'card ' + colors[suit];
-    // result.className += ' c0-2';
-    if (my) {
-        result.className += ' card-clickable';
-        result.setAttribute('value', suit + '-' + value);
-    }
-    var topleft = document.createElement('div');
-    var bottomright = document.createElement('div');
-    var central = document.createElement('div');
-    topleft.className = 'topleft';
-    bottomright.className = 'bottomright';
-    central.className = 'center';
-    if (value > 1) {
-        topleft.innerHTML = values[value] + '<br>' + suits[suit];
-        bottomright.innerHTML = values[value] + '<br>' + suits[suit];
-    }
-    central.innerHTML = suits[suit];
-    result.appendChild(topleft);
-    result.appendChild(central);
-    result.appendChild(bottomright);
-    return result;
 }
 
 function cardClass(card) {
@@ -101,6 +75,7 @@ function tricksDecrease(amount) {
 var colors = ['black', 'red', 'red', 'black'];
 var suits = ['&clubs;', '&diams;', '&hearts;', '&spades;'];
 
+var mobile = false;
 var socket = null;
 var mySeat = 0;
 var myPreviousSeat = -1;
@@ -159,8 +134,6 @@ function seat(place) {
 function seatMe(place) {
     if ($('#username').val()) {
         socket.emit('seatRequest', place, $('#username').val());
-        mySeat = place;
-        names[place] = $('#username').val();
     }
 }
 
@@ -177,12 +150,21 @@ function marriageValue(suit, len, half) {
     return suitValue(suit) * Math.pow(len, 2) / divBy;
 }
 
+function trickStatusText(value) {
+    if (value == 0)
+        return 'Na równo';
+    if (value > 0)
+        return 'Do walki: ' + value;
+    else
+        return 'Do sprzedania: ' + -value;
+}
+
 function reconnectState(state) {
     $('#ready-button').hide();
     startGame(state.gameOptions);
     trumpReceive(state.topCard);
     handSizes = state.handSizes;
-    phase = state.phase;
+    updatePhase(state.phase);
     dealNumber = state.deal;
     spinnerMax = state.maxBid;
     if (state.trumpChanged)
@@ -230,12 +212,13 @@ function reconnectState(state) {
 
     tricksLeft = $('#hand-south div.card').length + $('#desk-south div.card').length;
     $('#tricks-remaining').text(tricksLeft);
+    $('#declarations-total').text(totalBids + ' / ' + dealNumber);
 }
 
 function countPlayers() {
     var result = 0;
     for (var i = 0; i < 4; i++)
-        if (names[i] != null)
+        if (names[i])
             result++;
     return result;
 }
@@ -280,6 +263,19 @@ function updateTable(position, name) {
 function updateAllNames(playerNames) {
     for (var i = 0; i < 4; i++)
         updateTable(i, playerNames[i]);
+}
+
+function updatePhase(phaseId) {
+    phase = phaseId;
+    if (phase == 0) {
+        $('.info-2').hide();
+        $('.info-1').show();
+    }
+    else {
+        $('.info-1').hide();
+        $('.info-2').show();
+        extraUpdate(0);
+    }
 }
 
 // draw functions
@@ -343,8 +339,10 @@ function startGame(options) {
 
     $('.score-table').empty();
     $('.score-table-header').empty();
-    $('.info').show();
+    updatePhase(0);
     $('#waiting').hide();
+    $('#stand-button').hide();
+    $('.info-all').show();
     for (var i = 0; i < 4; i++) {
         if (names[i]) {
             hands[seat(i)].show();
@@ -364,21 +362,25 @@ function endGame() {
     $('.tricks').hide();
     tricksClear();
     $('#ready-button').show();
+    $('#stand-button').show();
     $('#trump').empty();
     $('#trump-current').empty().hide();
     $('.info').hide();
+    $('.nick.disconnected').removeClass('disconnected');
     running = false;
 }
 
 function handReceive(hand, maxBid, redeal) {
     $('.hand').empty();
     $('#trump-current').hide();
+    updatePhase(0);
     trumpChanged = false;
     dealNumber = hand.length;
     spinnerMax = maxBid;
     totalBids = 0;
     tricksLeft = dealNumber;
     $('#tricks-remaining').text(tricksLeft);
+    $('#declarations-total').text('0 / ' + dealNumber);
     extraUpdate(0);
 
     drawMyHand(hand);
@@ -527,8 +529,8 @@ function cardClicked() {
 
     // we are first to act
     if (playFirst) {
-        var len = $('.hovered').length;
-        var card = selectorToCard($('.hovered').first());
+        var len = $('#hand-south .hovered').length;
+        var card = selectorToCard($('#hand-south .hovered').first());
         marriageLow = marriageCards(card, true);
         marriageHigh = marriageCards(card, false);
 
@@ -543,8 +545,8 @@ function cardClicked() {
 
         else {
             var confirmation = (marriageLow.length < len && marriageHigh.length < len);
-            prevCard = $('.hovered').first().prev();
-            $('#desk-south').append($('.hovered'));
+            prevCard = $('#hand-south .hovered').first().prev();
+            $('#desk-south').append($('#hand-south .hovered'));
             enterMarriageMode(confirmation);
         }
     }
@@ -594,7 +596,7 @@ function trumpUpdate(suit) {
 
 function extraUpdate(value) {
     totalExtra = value;
-    $('#declarations-total').text(totalBids - totalExtra);
+    $('#tricks-status').text(trickStatusText(totalBids - totalExtra - dealNumber));
 }
 
 function moveRequest(type, leader) {
@@ -646,7 +648,7 @@ function moveOK(result) {
         tricks[0].text(moveValue);
         declared[0] = moveValue;
         totalBids += moveValue;
-        $('#declarations-total').text(totalBids);
+        $('#declarations-total').text(totalBids + ' / ' + dealNumber);
     }
     else if (moveType == 2) {
         $('.marriage-window').hide();
@@ -674,7 +676,7 @@ function moveReceive(player, type, value, marriage) {
         tricks[player].text(value);
         declared[player] = value;
         totalBids += value;
-        $('#declarations-total').text(totalBids);
+        $('#declarations-total').text(totalBids + ' / ' + dealNumber);
     }
     else {
         playLength = value.length;
@@ -730,12 +732,25 @@ $(document).ready(function(){
     $('#button-south').hide();
     $('#hand-south').show();
     return;*/
+
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        mobile = true;
+    }
+
+
+    // hold chat input focus for non-mobile devices
+    if (!mobile) {
+        $('#chat-input').focus();
+        $('#chat-input').blur(function(){
+            setTimeout(function(){
+                $('#chat-input').focus();
+            }, 0);
+        });
+    }
     
     socket = io();
 
-    $('#username').focus();
-
-
+    // $('#username').focus();
 
     /*$('#hand-south').append(create_card(new Card(2, 6), true));
     $('#hand-south').append(create_card(new Card(2, 6), true));
@@ -798,24 +813,37 @@ $(document).ready(function(){
         appendScoreRow(scores);
     });
 
-    socket.on('seatResponse', function(response){
+    socket.on('seatResponse', function(response, place, name){
         if (response) {
             seated = true;
+            names[place] = name;
+            mySeat = place;
             $('#username-request').hide();
+            $('#stand-button').show();
+            $('#logout').hide();
             updateAllNames(names);
         }
         else {
-            names[mySeat] = null;
-            mySeat = 0;
+            // do nothing?
         }
     });
 
+    socket.on('updatePhase', updatePhase);
     socket.on('chatReceive', chatReceive);
     socket.on('handReceive', handReceive);
     socket.on('moveReceive', moveReceive);
     socket.on('moveRequest', moveRequest);
     socket.on('trumpReceive', trumpReceive);
     socket.on('moveOK', moveOK);
+    $('#stand-button').click(function(){
+        $('#stand-button').hide();
+        $('#logout').show();
+        socket.emit('stand');
+        names[mySeat] = null;
+        mySeat = 0;
+        seated = false;
+        updateAllNames(names);
+    });
 
     socket.on('startGame', startGame);
     socket.on('endGame', endGame);
@@ -882,4 +910,6 @@ $(document).ready(function(){
         }
     });
 
-})
+    socket.emit('hello', $('#username').val());
+
+});

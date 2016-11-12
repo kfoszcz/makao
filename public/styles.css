@@ -1,9 +1,59 @@
+@font-face {
+    font-family: ubuntu;
+    src: url('Ubuntu-R.ttf');
+}
+
+div.login-window form {
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 1px #c4c4ea solid;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    color: #c4c4ea;
+    position: fixed;
+    top: 40%;
+    left: 35%;
+    width: 30%;
+    height: 20%;
+    /*margin-top: -40px;*/
+    /*margin-left: -10%;*/
+    font-size: 0.7em;
+    padding: 5px;
+}
+
+div.login-window div {
+    display: flex;
+}
+
+div.login-window input {
+    background-color: rgba(0, 0, 0, 0);
+    border: 0;
+    width: 120px;
+    color: white;
+    padding: 0 15px;
+    font-size: 0.7em;
+}
+
+div.login-window input:focus {
+    outline: none;
+}
+
 body {
     margin: 0;
     padding: 0;
-    font-family: Helvetica;
+    height: 100vh;
+    width: 100vw;
+    font-family: ubuntu;
     font-size: 2em;
     overflow: hidden;
+    background-image: url('wood.png');
+    background-size: 100% 100%;
+}
+
+input {
+    font-family: ubuntu;
 }
 
 h3 {
@@ -21,7 +71,7 @@ div.table {
     float: left;
     width: 80%;
     height: 100%;
-    background: #23b34a;
+    /*background: #23b34a;*/
 }
 
 div.sidebar {
@@ -29,6 +79,7 @@ div.sidebar {
     width: 20%;
     height: 100%;
     text-align: center;
+    background: rgba(0, 0, 0, 0.7);
 }
 
 div.corner {
@@ -87,14 +138,6 @@ div.tricks {
     display: none;
 }
 
-div#username-request {
-    color: white;
-}
-
-input#username {
-    text-align: center;
-}
-
 div#waiting {
     color: white;
     font-size: 0.5em;
@@ -137,7 +180,10 @@ div.number-confirm {
     border-top: 1px white solid;
 }
 
-div.button {
+.button {
+    display: block;
+    text-decoration: none;
+    text-align: center;
     border: 1px solid grey;
     border-radius: 5px;
     padding: 5px;
@@ -147,17 +193,26 @@ div.button {
     -webkit-user-select: none;
 }
 
-div#ready-button {
+.button:hover {
+    background: #aaa;
+    cursor: pointer;
+}
+
+div#ready-button, div#stand-button {
     display: none;
 }
 
-input {
+#chat-input {
+    background-color: rgba(0, 0, 0, 0);
+    border: 0;
     height: 2em;
+    color: white;
+    padding: 0 15px;
+    font-size: 0.5em;
 }
 
-div.button:hover {
-    background: #aaa;
-    cursor: pointer;
+#chat-input:focus {
+    outline: none;
 }
 
 div#player-north {
@@ -191,7 +246,7 @@ div.desk-last {
     justify-content: space-between;
     width: 32%;
     height: 40%;
-    background: #0a4c15;
+    background-color: rgba(0, 0, 0, 0.7);
     position: fixed;
     top: 30%;
     left: 24%;
@@ -215,7 +270,7 @@ div.desk {
     justify-content: space-between;
     width: 40%;
     height: 40%;
-    background: #167f28;
+    /*background: #167f28;*/
 }
 
 div.desk-west, div.desk-east {
@@ -254,7 +309,7 @@ div.desk-south {
 div.scorecard {
     width: 100%;
     height: 50%;
-    background: #099253;
+    /*background: #099253;*/
     display: flex;
     flex-direction: column;
 }
@@ -262,7 +317,7 @@ div.scorecard {
 div.chat {
     width: 100%;
     height: 50%;
-    background: #047b71;
+    /*background: #047b71;*/
     display: flex;
     flex-direction: column;
 }
@@ -428,15 +483,15 @@ div.score-row:hover {
 }
 
 div.score-index {
-    border-bottom: 1px blue solid;
+    border-bottom: 1px #c4c4ea solid;
     border-collapse: collapse;
     display: table-cell;
     width: 30px;
 }
 
 div.score-info {
-    border-bottom: 1px blue solid;
-    border-left: 1px blue solid;
+    border-bottom: 1px #c4c4ea solid;
+    border-left: 1px #c4c4ea solid;
     border-collapse: collapse;
     display: table-cell;
     font-size: 0.5em;
@@ -445,13 +500,13 @@ div.score-info {
 }
 
 div.score-item {
-    border-bottom: 1px blue solid;
+    border-bottom: 1px #c4c4ea solid;
     border-collapse: collapse;
     display: table-cell;
 }
 
 div.score-item-header {
-    border-left: 1px blue solid;
+    border-left: 1px #c4c4ea solid;
     overflow: hidden;
 }
 
@@ -543,4 +598,37 @@ div.marriage-no:hover {
 
 div.marriage-cancel:hover {
     background-color: #131694;
+}
+
+div#username-request {
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 1px #c4c4ea solid;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    color: #c4c4ea;
+    position: fixed;
+    top: 50%;
+    left: 40%;
+    width: 20%;
+    height: 60px;
+    margin-top: -40px;
+    margin-left: -10%;
+    font-size: 0.7em;
+    padding: 5px;
+}
+
+input#username {
+    background-color: rgba(0, 0, 0, 0);
+    border: 0;
+    text-align: center;
+    width: 70%;
+    color: white;
+    font-size: 0.7em;
+}
+
+input#username:focus {
+    outline: none;
 }

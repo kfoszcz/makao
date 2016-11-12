@@ -58,7 +58,17 @@ div.card.old-trump {
 }
 
 div.suit-only {
-    font-size: 4em;
+    position: relative;
+    display: inline-block;
+    border: 1px solid grey;
+    border-radius: 10px;
+    height: 126px;
+    width: 81px;
+    text-align: center;
+    user-select: none;
+    -webkit-user-select: none;
+    background-color: white;
+    font-size: 3em;
 }
 
 /* card faces */

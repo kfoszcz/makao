@@ -45,6 +45,7 @@ Game.FIRST_ORBIT = 4;
 Game.END_GAME = 8;
 Game.ADD_EXTRA = 16;
 Game.CHOOSE_MARRIAGE = 32;
+Game.PHASE_CHANGE = 64;
 
 Game.testCards = [
 	'HA', 'HQ', 'HK', 'HK', 'HQ', 'HJ', 'H2', 'S5', 'S3', 'S3', 'S2', 'S2',
@@ -171,6 +172,7 @@ Game.prototype.move = function(type, value, marriage) {
 		this.current = this.nextPlayer(this.current);
 		if (this.current == this.leader) {
 			this.phase = Game.PHASE_PLAY;
+			this.request |= Game.PHASE_CHANGE;
 		}
 		return true;
 	}
