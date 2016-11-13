@@ -3,16 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <title>Makao</title>
-    <link rel="stylesheet" type="text/css" href="styles.css">
-    <link rel="stylesheet" type="text/css" href="card-styles.css">
-    <script type="text/javascript" src="jquery-3.1.1.min.js"></script>
-    <script type="text/javascript" src="game.js"></script>
-    <script type="text/javascript" src="ui.js"></script>
-    <script type="text/javascript" src="js.cookie.js"></script>
+    <link rel="stylesheet" type="text/css" href="/styles.css">
+    <link rel="stylesheet" type="text/css" href="/card-styles.css">
+    <script type="text/javascript" src="/jquery-3.1.1.min.js"></script>
+    <script type="text/javascript" src="/game.js"></script>
+    <script type="text/javascript" src="/ui.js"></script>
     <script type="text/javascript" src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 <!-- <img src="wood.png" style="display: none;"> -->
+<div id="options" class="options" style="display: none;">
+    <div class="opt">
+        <label for="start">Start</label><input type="number" name="start" id="options-start" value="1" min="1" max="50">
+        <label for="end">Koniec</label><input type="number" name="end" id="options-end" value="24" min="1" max="50">
+    </div><div class="opt">
+        <label for="decks">Liczba talii</label><input type="number" name="decks" id="options-decks" value="4" min="1" max="12">
+    </div><div class="opt">
+        <label for="quads">Premia za czwórkę</label><input type="number" name="quads" id="options-quads" value="20">
+    </div><div class="opt">
+        <label for="winvalue">Punkty za ugraną</label><input type="number" name="winvalue" id="options-winvalue" value="10">
+    </div><div class="opt">
+        <div>Meldunki całe</div><div class="slideThree">
+            <input type="checkbox" id="options-marriages" name="marriages" checked><label for="options-marriages"></label>
+        </div>
+    </div><div class="opt">
+        <div>Meldunki połówkowe</div><div class="slideThree">
+            <input type="checkbox" id="options-half" name="half" checked><label for="options-half"></label>
+        </div>
+    </div><div class="opt">
+        <div>Tasuj po każdym rozdaniu</div><div class="slideThree">
+            <input type="checkbox" id="options-shuffle" name="shuffle"><label for="options-shuffle"></label>
+        </div>
+    </div><div class="opt">
+        <div>Handicap</div><div class="slideThree">
+            <input type="checkbox" id="options-handicap" name="handicap" checked><label for="options-handicap"></label>
+        </div>
+    </div><div class="opt">
+        <div id="options-confirm" class="button">Zatwierdź</div>
+    </div>
+    <div id="options-close" class="button button-close">x</div>
+</div>
+<input type="hidden" id="get-name" value="{{name}}">
+<input type="hidden" id="get-table" value="{{tableId}}">
 <div class="container">
     <div class="table">
         <div class="corner" id="corner-top-left">
@@ -55,8 +87,9 @@
                 </div>
                 <div class="button" id="ready-button">Start</div>
                 <div id="waiting">Oczekiwanie na start...</div>
+                <div class="button" id="options-button">Opcje</div>
                 <div class="button" id="stand-button">Wstań</div>
-                <a class="button" id="logout" href="logout">Wyloguj</a>
+                <a class="button" id="logout" href="/logout">Wyloguj</a>
                 <div class="number-spinner" style="display: none;">
                     <div class="number-button" id="number-decr">-</div>
                     <div class="number-value" id="number-value">0</div>
@@ -85,7 +118,7 @@
                 <div class="desk-board desk-south" id="desk-south-last"></div>
             </div>
             <div class="desk-board desk-east" id="desk-east-last"></div>
-            <div class="button desk-close">x</div>
+            <div id="last-close" class="button button-close">x</div>
         </div>
         <div class="player" id="player-east">
             <div class="button" id="button-east" onclick="seatMe(3)">Usiądź</div>

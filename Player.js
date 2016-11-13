@@ -1,10 +1,11 @@
 var Score = require('./Score.js');
 
-function Player(id, name, seat, socket) {
+function Player(id, name, seat, socket, table) {
     this.id = id;
     this.name = name;
     this.seat = seat;
     this.socket = socket;
+    this.table = null;
     this.ready = false;
     this.connected = true;
     this.admin = false;

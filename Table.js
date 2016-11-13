@@ -3,6 +3,21 @@ function Table(id) {
     this.playerCount = 0;
     this.players = [undefined, undefined, undefined, undefined];
     this.game = null;
+    this.options = {
+        'deal_start': 1,
+        'deal_end': 24,
+        'marriages': true,
+        'half_marriages': true,
+        'always_shuffle': false,
+        'pairs': true,
+        'quads_value': 20,
+        'players_min': 2,
+        'players_max': 4,
+        'decks': 4,
+        'handicap': true,
+        'suit_values': [4, 8, 10, 6],
+        'win_value': 10
+    };
 }
 
 Table.prototype.findPlayerById = function(playerId) {

@@ -6,7 +6,8 @@ var striptags = require('striptags');
 var Table = require('./Table.js');
 var Card = require('./Card.js');
 var Player = require('./Player.js');
-var Game = require('./Game.js')
+var Game = require('./Game.js');
+var Room = require('./Room.js');
 var cookieSession = require('cookie-session');
 var bodyParser = require('body-parser');
 var exphbs  = require('express-handlebars');
@@ -29,23 +30,32 @@ app.set('view engine', 'handlebars');
 app.use(express.static(__dirname + '/public'));
 app.use(express.static(__dirname + '/public/img'));
 
+app.get('/test/:id', function(req, res){
+	if (isNaN(req.params.id))
+		res.send('Error');
+	else
+		res.send('OK: ' + parseInt(req.params.id));
+});
+
 app.get('/', function(req, res){
 	if (req.session.name)
-		res.redirect('/table');
+		res.redirect('/table/1');
 	else
 		res.redirect('/login');
 });
 
-app.get('/table', function(req, res){
+app.get('/table/:id', function(req, res){
 	if (!req.session.name)
 		res.redirect('/login');
+	else if (isNaN(req.params.id))
+		res.send('Stół nie istnieje!');
 	else
-		res.render('table', { name: req.session.name });
+		res.render('table', { tableId: req.params.id, name: req.session.name });
 });
 
 app.get('/login', function(req, res){
 	if (req.session.name)
-		res.redirect('/table');
+		res.redirect('/table/1');
 	else
 		res.sendFile(__dirname + '/public/login.html');
 });
@@ -56,10 +66,9 @@ app.get('/logout', function(req, res){
 });
 
 app.post('/login', function(req, res){
-	console.log('login post');
 	if (req.body.login) {
 		req.session.name = req.body.login;
-		res.redirect('/table');
+		res.redirect('/table/1');
 	}
 	else {
 		res.sendFile(__dirname + '/public/login.html');
@@ -70,24 +79,15 @@ http.listen(3000, function(){
 	console.log('Listening on 3000');
 });
 
-var table = new Table(1);
-var gameOptions = {
-	'deal_start': 1,
-	'deal_end': 24,
-	'marriages': true,
-	'half_marriages': true,
-	'always_shuffle': false,
-	'pairs': true,
-	'quads_value': 20,
-	'players_min': 2,
-	'players_max': 4,
-	'decks': 4,
-	'handicap': true,
-	'suit_values': [4, 8, 10, 6],
-	'win_value': 10
-};
+var room = new Room(1, 10);
+room.addTable();
+room.addTable();
 
-function executeCmd(socket, cmd, arg) {
+function executeCmd(tableId, socket, cmd, arg) {
+	var table = room.getTable(tableId);
+	if (!table) {
+		return;
+	}
 	var executor = table.findPlayerById(socket.id);
 	if (!executor)
 		return false;
@@ -102,8 +102,8 @@ function executeCmd(socket, cmd, arg) {
 			var player = table.findPlayerByName(arg);
 			if (player) {
 				table.removePlayer(player.seat);
-				io.emit('chatReceive', 'Użytkownik <b>' + arg + '</b> został wyproszony.');
-				io.emit('updateTable', player.seat, null);
+				io.to(table.id).emit('chatReceive', 'Użytkownik <b>' + arg + '</b> został wyproszony.');
+				io.to(table.id).emit('updateTable', player.seat, null);
 			}
 			else {
 				socket.emit('chatReceive', 'No such user.');
@@ -121,25 +121,25 @@ function executeCmd(socket, cmd, arg) {
 			break;
 
 		case 'move':
-			requestMove();
+			requestMove(table.id);
 			break;
 
 		case 'redeal':
 			table.game.phase = 0;
 			table.game.current = table.game.nextPlayer(table.game.dealer);
-			newDeal(true);
-			requestMove();
+			newDeal(table.id, true);
+			requestMove(table.id);
 			break;
 
 		case 'start':
 			var val = parseInt(arg);
-			gameOptions.deal_start = val;
+			table.options.deal_start = val;
 			socket.emit('chatReceive', 'deal_start changed to ' + val);
 			break;
 
 		case 'end':
 			var val = parseInt(arg);
-			gameOptions.deal_end = val;
+			table.options.deal_end = val;
 			socket.emit('chatReceive', 'deal_end changed to ' + val);
 			break;
 
@@ -178,9 +178,9 @@ function executeCmd(socket, cmd, arg) {
 			table.game.paused = true;
 			table.kickDisconnected();
 			table.resetReady();
-			io.emit('clearBoard');
-			io.emit('endGame');
-			io.emit('tableStatus', table.getPlayerNames());
+			io.to(table.id).emit('clearBoard');
+			io.to(table.id).emit('endGame');
+			io.to(table.id).emit('tableStatus', table.getPlayerNames());
 			break;
 
 		default:
@@ -188,25 +188,28 @@ function executeCmd(socket, cmd, arg) {
 	}
 }
 
-function newDeal(redeal) {
+function newDeal(tableId, redeal) {
+	var table = room.getTable(tableId);
 	table.game.dealCards();
 	var player = null;
 	while (player = table.game.playerIter())
 		player.socket.emit('handReceive', player.hand, player.maxBid, redeal);
-	io.emit('trumpReceive', table.game.topCard);
+	io.to(table.id).emit('trumpReceive', table.game.topCard);
 }
 
-function requestMove() {
+function requestMove(tableId) {
+	var table = room.getTable(tableId);
 	if (table.game.request & Game.CHOOSE_MARRIAGE) {
 		table.game.getExtraPlayer().socket.emit('moveRequest', 2, table.game.marriageOptions);
 	}
 	else {
 		table.game.getCurrentPlayer().socket.emit('moveRequest', table.game.phase, table.game.current === table.game.leader);
 	}
-	table.game.getCurrentPlayer().socket.broadcast.emit('updateCurrentPlayer', table.game.current);
+	table.game.getCurrentPlayer().socket.broadcast.to(table.id).emit('updateCurrentPlayer', table.game.current);
 }
 
-function sendFinalResults() {
+function sendFinalResults(tableId) {
+	var table = room.getTable(tableId);
 	var msgs = [
 		'Gratulacje, jesteś zwycięzcą! :)',
 		'Zająłeś drugie miejsce.',
@@ -223,17 +226,26 @@ io.on('connection', function(socket){
 	// emit table status to connecting client
 	// console.log(socket);
 
-	socket.on('hello', function(name){
+	socket.on('hello', function(tableId, name){
+		tableId = parseInt(tableId);
+		var table = room.getTable(tableId);
+		if (!table) {
+			return;
+		}
+
 		var ipAddr = socket.request.connection.remoteAddress;
 		ipAddr = ipAddr.slice(ipAddr.lastIndexOf(':') + 1);
 		if (ipAddr == '1')
 			ipAddr = 'localhost';
 		console.log(ipAddr);
-		// socket.broadcast.emit('chatReceive', 'Połączenie z ' + ipAddr);
+		// socket.broadcast.to(table.id).emit('chatReceive', 'Połączenie z ' + ipAddr);
+		socket.join(table.id);
+		socket.table = table.id;
 		socket.name = name;
-		socket.broadcast.emit('chatReceive', 'Przychodzi <b>' + name + '</b>.');
+		socket.broadcast.to(table.id).emit('chatReceive', 'Przychodzi <b>' + name + '</b>.');
 		socket.emit('chatReceive', 'Witaj <b>' + name + '</b>!');
 		socket.emit('tableStatus', table.getPlayerNames());
+		socket.emit('optionsUpdate', table.options);
 
 		if (table.game && table.game.paused) {
 			var player = table.findPlayerByName(name);
@@ -250,7 +262,7 @@ io.on('connection', function(socket){
 			player.status = 'connected';
 
 			socket.emit('seatResponse', true, player.seat, player.name);
-			socket.broadcast.emit('updatePlayerStatus', player.seat, player.status);
+			socket.broadcast.to(table.id).emit('updatePlayerStatus', player.seat, player.status);
 			socket.emit('tableStatus', table.getPlayerNames(true));
 		
 			for (var i = 0; i < 4; i++)
@@ -262,63 +274,130 @@ io.on('connection', function(socket){
 			// when all players are connected, resume game
 			if (table.playersConnected()) {
 				table.game.paused = false;
-				requestMove();
+				requestMove(tableId);
 			}
 		}
 	});
 
 	socket.on('disconnect', function(){
 		console.log('User ' + socket.name + ' disconnected');
+		var table = room.getTable(socket.table);
+		if (!table) {
+			return;
+		}
 		var player = table.findPlayerById(socket.id);
-		socket.broadcast.emit('chatReceive', 'Odchodzi <b>' + socket.name + '</b>.');
+		socket.broadcast.to(table.id).emit('chatReceive', 'Odchodzi <b>' + socket.name + '</b>.');
 		if (player) {
 			if (!table.game || !table.game.running) {
 				table.removePlayer(player.seat);
-				socket.broadcast.emit('updateTable', player.seat, null);
+				socket.broadcast.to(table.id).emit('updateTable', player.seat, null);
 			}
 			else {
 				table.game.paused = true;
 				player.connected = false;
 				player.status = 'disconnected';
-				socket.broadcast.emit('updatePlayerStatus', player.seat, player.status);
+				socket.broadcast.to(table.id).emit('updatePlayerStatus', player.seat, player.status);
 			}
 		}
+		socket.leave(table.id);
+	});
+
+	socket.on('optionsChange', function(options){
+		var tableId = socket.table;
+		var table = room.getTable(tableId);
+		if (!table) {
+			return;
+		}
+
+		if (table.game && table.game.running)
+			return;
+
+		if (isBetween(options.deal_start, 1, 103))
+			table.options.deal_start = options.deal_start;
+
+		if (isBetween(options.deal_end, 1, 103))
+			table.options.deal_end = ((options.deal_end) >= table.options.deal_start) ? options.deal_end : table.options.deal_start;
+
+		if (isBetween(options.decks, 1, 12))
+			table.options.decks = options.decks;
+
+		if (isBetween(options.quads_value, 0, 100))
+			table.options.quads_value = options.quads_value;
+
+		if (isBetween(options.win_value, 0, 100))
+			table.options.win_value = options.win_value;
+
+		if (options.marriages != null && typeof(options.marriages) === "boolean")
+			table.options.marriages = options.marriages;
+
+		if (options.half_marriages != null && typeof(options.half_marriages) == 'boolean')
+			table.options.half_marriages = options.half_marriages;
+
+		if (options.always_shuffle != null && typeof(options.always_shuffle) == 'boolean')
+			table.options.always_shuffle = options.always_shuffle;
+
+		if (options.handicap != null && typeof(options.handicap) == 'boolean')
+			table.options.handicap = options.handicap;
+
+		table.resetReady();
+
+		io.to(table.id).emit('optionsUpdate', table.options);
+		io.to(table.id).emit('chatReceive', 'Zmieniono ustawienia stołu.');
 	});
 
 	socket.on('stand', function(){
+		var tableId = socket.table;
+		var table = room.getTable(tableId);
+		if (!table) {
+			return;
+		}
 		var player = table.findPlayerById(socket.id);
 		if (player) {
 			if (!table.game || !table.game.running) {
 				table.removePlayer(player.seat);
-				socket.broadcast.emit('updateTable', player.seat, null);
+				socket.broadcast.to(table.id).emit('updateTable', player.seat, null);
 			}
 		}
 	});
 
 	socket.on('blur', function(){
+		var tableId = socket.table;
+		var table = room.getTable(tableId);
+		if (!table) {
+			return;
+		}
 		var player = table.findPlayerById(socket.id);
 		if (player) {
 			player.status = 'inactive';
-			socket.broadcast.emit('updatePlayerStatus', player.seat, player.status);
+			socket.broadcast.to(table.id).emit('updatePlayerStatus', player.seat, player.status);
 		}
 	});
 
 	socket.on('focus', function(){
+		var tableId = socket.table;
+		var table = room.getTable(tableId);
+		if (!table) {
+			return;
+		}
 		var player = table.findPlayerById(socket.id);
 		if (player) {
 			player.status = 'connected';
-			socket.broadcast.emit('updatePlayerStatus', player.seat, player.status);
+			socket.broadcast.to(table.id).emit('updatePlayerStatus', player.seat, player.status);
 		}
 	});
 
 	socket.on('seatRequest', function(seat, name){
+		var tableId = socket.table;
+		var table = room.getTable(tableId);
+		if (!table) {
+			return;
+		}
 		if (!table.game || !table.game.running) {
-			var result = table.addPlayer(seat, new Player(socket.id, name, seat, socket));
+			var result = table.addPlayer(seat, new Player(socket.id, name, seat, socket, table.id));
 			socket.name = name;
-			console.log('User #' + socket.id + ' changed name to ' + socket.name);
 			socket.emit('seatResponse', result, seat, name);
 			if (result) {
-				socket.broadcast.emit('updateTable', seat, name);
+				socket.broadcast.to(table.id).emit('updateTable', seat, name);
 			}
 			for (var i = 0; i < 4; i++)
 				if (table.players[i])
@@ -331,6 +410,11 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('playerReady', function(){
+		var tableId = socket.table;
+		var table = room.getTable(tableId);
+		if (!table) {
+			return;
+		}
 		var player = table.findPlayerById(socket.id);
 		if (!player)
 			return false;
@@ -338,13 +422,13 @@ io.on('connection', function(socket){
 
 		if (table.playersReady()) {
 			// start game
-			io.emit('chatReceive', 'Zaczynamy grę. Powodzenia!');
-			table.game = new Game(table.players, gameOptions);
+			io.to(table.id).emit('chatReceive', 'Zaczynamy grę. Powodzenia!');
+			table.game = new Game(table.players, table.options);
 			// console.log(table.game);
 			table.game.init();
-			io.emit('startGame', table.game.options);
-			newDeal();
-			requestMove();
+			io.to(table.id).emit('startGame', table.game.options);
+			newDeal(table.id);
+			requestMove(table.id);
 		}
 		else {
 			for (var i = 0; i < 4; i++)
@@ -354,6 +438,11 @@ io.on('connection', function(socket){
 	});
 
 	socket.on('moveSend', function(type, value, marriage){
+		var tableId = socket.table;
+		var table = room.getTable(tableId);
+		if (!table) {
+			return;
+		}
 		if (marriage && marriage.length == 0)
 			marriage = null;
 		if (type == 1) {
@@ -404,43 +493,42 @@ io.on('connection', function(socket){
 		if (result) {
 			var moveTimeout = 0;
 			if (type != 2)
-				socket.broadcast.emit('moveReceive', current, type, value, marriage);
+				socket.broadcast.to(table.id).emit('moveReceive', current, type, value, marriage);
 			if (table.game.request & Game.CHOOSE_MARRIAGE) {
-				console.log(table.game.marriageOptions);
-				requestMove();
+				requestMove(table.id);
 				return true;
 			}
 			if (table.game.request & Game.FIRST_ORBIT) {
-				io.emit('tricksInit');
+				io.to(table.id).emit('tricksInit');
 			}
 			if (table.game.request & Game.PHASE_CHANGE) {
-				io.emit('updatePhase', table.game.phase);
+				io.to(table.id).emit('updatePhase', table.game.phase);
 			}
 			if (table.game.request & Game.ADD_EXTRA) {
-				io.emit('tricksUpdate', table.game.extra, table.game.getExtraPlayer().tricks);
-				io.emit('extraUpdate', table.game.totalExtra);
+				io.to(table.id).emit('tricksUpdate', table.game.extra, table.game.getExtraPlayer().tricks);
+				io.to(table.id).emit('extraUpdate', table.game.totalExtra);
 				/*if (table.game.showCards.length) {
-					socket.broadcast.emit('trumpUpdate', table.game.showCards[0].suit);
-					socket.broadcast.emit('showCards', table.game.extra, table.game.showCards);
+					socket.broadcast.to(table.id).emit('trumpUpdate', table.game.showCards[0].suit);
+					socket.broadcast.to(table.id).emit('showCards', table.game.extra, table.game.showCards);
 				}*/
 			}
 			if (table.game.request & Game.NEW_ORBIT) {
 				locked = true;
 				moveTimeout = 1000;
-				io.emit('tricksUpdate', table.game.best, table.game.getTrickWinner().tricks);
+				io.to(table.id).emit('tricksUpdate', table.game.best, table.game.getTrickWinner().tricks);
 				setTimeout(function(){
 					table.game.clearBoard();
-					io.emit('clearBoard');
+					io.to(table.id).emit('clearBoard');
 					locked = false;
 				}, 1000);
 			}
 			if (table.game.request & Game.END_GAME) {
-				io.emit('scoresUpdate', table.game.getScores());
+				io.to(table.id).emit('scoresUpdate', table.game.getScores());
 				locked = true;
 				table.resetReady();
 				setTimeout(function(){
-					io.emit('endGame');
-					sendFinalResults();
+					io.to(table.id).emit('endGame');
+					sendFinalResults(table.id);
 					table.game.running = false;
 					locked = false;
 				}, 2000);
@@ -448,32 +536,42 @@ io.on('connection', function(socket){
 				return;
 			}
 			if (table.game.request & Game.NEW_DEAL) {
-				io.emit('scoresUpdate', table.game.getScores());
+				io.to(table.id).emit('scoresUpdate', table.game.getScores());
 				locked = true;
 				moveTimeout = 2000;
 				setTimeout(function(){
-					newDeal();
+					newDeal(table.id);
 					locked = false;
 				}, 2000);
 			}
-			setTimeout(requestMove, moveTimeout);
+			setTimeout(function(){
+				requestMove(table.id);
+			}, moveTimeout);
 			table.game.request = 0;
 		}
 	});
 
 	socket.on('chatMsg', function(msg){
+		var tableId = socket.table;
+		var table = room.getTable(tableId);
+		if (!table) {
+			return;
+		}
 		if (msg[0] === '\\') {
 			var args = msg.slice(1).split(' ', 2);
-			executeCmd(socket, args[0], args[1]);
+			executeCmd(table.id, socket, args[0], args[1]);
 			return;
 		}
 		var sender = (socket.name != null) ? socket.name : 'Guest';
 		// if message is not from server, strip html tags
 		if (sender)
 			striptags(msg);
-		console.log('Message from ' + sender + ': ' + msg);
-		io.emit('chatReceive', msg, sender);
+		// console.log('Message from ' + sender + ': ' + msg);
+		io.to(table.id).emit('chatReceive', msg, sender);
 	});
 
 });
 
+function isBetween(value, min, max) {
+	return (value && Number.isInteger(value) && value >= min && value <= max);
+}

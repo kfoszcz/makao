@@ -213,7 +213,7 @@ Game.prototype.move = function(type, value, marriage) {
 		}
 
 		// add quads points
-		if (value.length === this.options.decks && this.current === this.best && this.sameCards(value)) {
+		if (value.length >= 4 && value.length === this.options.decks && this.current === this.best && this.sameCards(value)) {
 			this.extra = this.current;
 			this.players[this.current].tricks += this.options.quads_value;
 			this.totalExtra += this.options.quads_value;
@@ -395,6 +395,8 @@ Game.prototype.maxDeclaration = function(playerId) {
 }
 
 Game.prototype.marriageCard = function(card) {
+	if (!this.options.marriages)
+		return 0;
 	if (card.rank == 13) return Player.KING;
 	if (card.rank == 12) return Player.QUEEN;
 	if (card.rank == 11 && this.options.half_marriages) return Player.JACK;

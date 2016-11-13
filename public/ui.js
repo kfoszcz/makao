@@ -125,7 +125,7 @@ var marriageHigh = null;
 var marriageLow = null;
 var prevCard = null;
 
-var snd = new Audio('notification.mp3');
+var snd = new Audio('/notification.mp3');
 
 function seat(place) {
     return (4 + place - mySeat) % 4;
@@ -157,6 +157,40 @@ function trickStatusText(value) {
         return 'Do walki: ' + value;
     else
         return 'Do sprzedania: ' + -value;
+}
+
+function updateGameOptions(options) {
+    gameOptions = options;
+    $('#options-start').val(gameOptions.deal_start);
+    $('#options-end').val(gameOptions.deal_end);
+    $('#options-decks').val(gameOptions.decks);
+    $('#options-quads').val(gameOptions.quads_value);
+    $('#options-winvalue').val(gameOptions.win_value);
+    $('#options-marriages').prop('checked', gameOptions.marriages);
+    $('#options-half').prop('checked', gameOptions.half_marriages);
+    $('#options-shuffle').prop('checked', gameOptions.always_shuffle);
+    $('#options-handicap').prop('checked', gameOptions.handicap);
+
+    if (!running && countPlayers() >= 2) {
+        $('#waiting').hide();
+        $('#ready-button').show();
+    }
+}
+
+function submitGameOptions() {
+    socket.emit('optionsChange', {
+        'deal_start': parseInt($('#options-start').val()),
+        'deal_end': parseInt($('#options-end').val()),
+        'decks': parseInt($('#options-decks').val()),
+        'quads_value': parseInt($('#options-quads').val()),
+        'win_value': parseInt($('#options-winvalue').val()),
+        'marriages': $('#options-marriages').prop('checked'),
+        'half_marriages': $('#options-half').prop('checked'),
+        'always_shuffle': $('#options-shuffle').prop('checked'),
+        'handicap': $('#options-handicap').prop('checked')
+    });
+    focusChat();
+    $('.options').hide();
 }
 
 function reconnectState(state) {
@@ -329,7 +363,8 @@ function playerReady() {
 }
 
 function startGame(options) {
-    gameOptions = options;
+    running = true;
+    updateGameOptions(options);
     var bestVal = 0;
     for (var i = 0; i < 4; i++)
         if (options.suit_values[i] > bestVal) {
@@ -342,6 +377,7 @@ function startGame(options) {
     updatePhase(0);
     $('#waiting').hide();
     $('#stand-button').hide();
+    $('#options-button').hide();
     $('.info-all').show();
     for (var i = 0; i < 4; i++) {
         if (names[i]) {
@@ -350,7 +386,6 @@ function startGame(options) {
         }
     }
     createScoreHeader();
-    running = true;
 }
 
 function endGame() {
@@ -363,6 +398,7 @@ function endGame() {
     tricksClear();
     $('#ready-button').show();
     $('#stand-button').show();
+    $('#options-button').show();
     $('#trump').empty();
     $('#trump-current').empty().hide();
     $('.info').hide();
@@ -402,12 +438,14 @@ function selectorToCard(selector) {
 }
 
 function marriageCards(card, lower) {
+    if (lower && !gameOptions.half_marriages)
+        return [];
     var marriageRank = 0;
     if (card.rank == 13)
         marriageRank = lower ? 11 : 12;
     else if (card.rank == 12)
         marriageRank = lower ? 11 : 13;
-    else if (card.rank == 11)
+    else if (card.rank == 11 && gameOptions.half_marriages)
         marriageRank = lower ? 12 : 13;
     if (marriageRank == 0)
         return [];
@@ -531,8 +569,8 @@ function cardClicked() {
     if (playFirst) {
         var len = $('#hand-south .hovered').length;
         var card = selectorToCard($('#hand-south .hovered').first());
-        marriageLow = marriageCards(card, true);
-        marriageHigh = marriageCards(card, false);
+        marriageLow = gameOptions.marriages ? marriageCards(card, true) : [];
+        marriageHigh = gameOptions.marriages ? marriageCards(card, false) : [];
 
         if (!marriageLow.length && !marriageHigh.length) {
             $('.hovered').addClass('selected');
@@ -723,6 +761,22 @@ function clearBoard() {
     $('.card.show').attr('class', 'card facedown');
 }
 
+function focusChat() {
+    // hold chat input focus for non-mobile devices
+    if (!mobile) {
+        $('#chat-input').focus();
+        $('#chat-input').blur(function(){
+            setTimeout(function(){
+                $('#chat-input').focus();
+            }, 0);
+        });
+    }
+}
+
+function blurChat() {
+    $('#chat-input').off('blur');
+}
+
 $(document).ready(function(){
     // card faces test
     
@@ -736,19 +790,10 @@ $(document).ready(function(){
     if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
         mobile = true;
     }
-
-
-    // hold chat input focus for non-mobile devices
-    if (!mobile) {
-        $('#chat-input').focus();
-        $('#chat-input').blur(function(){
-            setTimeout(function(){
-                $('#chat-input').focus();
-            }, 0);
-        });
-    }
     
     socket = io();
+
+    focusChat();
 
     // $('#username').focus();
 
@@ -834,6 +879,7 @@ $(document).ready(function(){
     socket.on('moveReceive', moveReceive);
     socket.on('moveRequest', moveRequest);
     socket.on('trumpReceive', trumpReceive);
+    socket.on('optionsUpdate', updateGameOptions);
     socket.on('moveOK', moveOK);
     $('#stand-button').click(function(){
         $('#stand-button').hide();
@@ -889,9 +935,31 @@ $(document).ready(function(){
         $('.desk-last').show();
     });
 
-    $('.desk-close').click(function(){
+    $('#last-close').click(function(){
         $('.desk-last').hide();
     });
+
+    $('#options-button').click(function(){
+        blurChat();
+        $('.options').show();
+    });
+
+    $('#options-close').click(function(){
+        focusChat();
+        $('.options').hide();
+    });
+
+    $('#options-marriages').change(function(){
+        if (!$(this).prop('checked'))
+            $('#options-half').prop('checked', false);
+    });
+
+    $('#options-half').change(function(){
+        if ($(this).prop('checked'))
+            $('#options-marriages').prop('checked', true);
+    });
+
+    $('#options-confirm').click(submitGameOptions);
 
     $('#number-value').on('wheel', function(e){
         var delta = e.originalEvent.deltaY;
@@ -910,6 +978,6 @@ $(document).ready(function(){
         }
     });
 
-    socket.emit('hello', $('#username').val());
+    socket.emit('hello', $('#get-table').val(), $('#get-name').val());
 
 });

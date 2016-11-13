@@ -40,6 +40,122 @@ div.login-window input:focus {
     outline: none;
 }
 
+div.options {
+    background-color: rgba(0, 0, 0, 0.95);
+    border: 1px #c4c4ea solid;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    color: #c4c4ea;
+    position: fixed;
+    top: 20%;
+    left: 15%;
+    width: 50%;
+    height: 60%;
+    /*margin-top: -40px;*/
+    /*margin-left: -10%;*/
+    font-size: 0.7em;
+    padding: 5px;
+    z-index: 500;
+}
+
+div.options div.opt {
+    display: flex;
+}
+
+div.options input {
+    background-color: rgba(0, 0, 0, 0);
+    border: 0;
+    width: 40px;
+    color: white;
+    padding: 0 15px;
+    font-size: 20px;
+}
+
+div.options input:focus {
+    outline: none;
+}
+
+/* SLIDE THREE */
+.slideThree {
+    width: 80px;
+    height: 26px;
+    background: #333;
+    margin: 0 15px;
+
+    -webkit-border-radius: 50px;
+    -moz-border-radius: 50px;
+    border-radius: 50px;
+    position: relative;
+
+    -webkit-box-shadow: inset 0px 1px 1px rgba(0,0,0,0.5), 0px 1px 0px rgba(255,255,255,0.2);
+    -moz-box-shadow: inset 0px 1px 1px rgba(0,0,0,0.5), 0px 1px 0px rgba(255,255,255,0.2);
+    box-shadow: inset 0px 1px 1px rgba(0,0,0,0.5), 0px 1px 0px rgba(255,255,255,0.2);
+}
+
+.slideThree:after {
+    content: 'NIE';
+    font: 14px/26px ubuntu, sans-serif;
+    color: #ff0000;
+    position: absolute;
+    right: 10px;
+    z-index: 0;
+    font-weight: bold;
+}
+
+.slideThree:before {
+    content: 'TAK';
+    font: 14px/26px ubuntu, sans-serif;
+    color: #00bf00;
+    position: absolute;
+    left: 10px;
+    z-index: 0;
+    font-weight: bold;
+}
+
+.slideThree label {
+    display: block;
+    width: 34px;
+    height: 20px;
+
+    -webkit-border-radius: 50px;
+    -moz-border-radius: 50px;
+    border-radius: 50px;
+
+    -webkit-transition: all .4s ease;
+    -moz-transition: all .4s ease;
+    -o-transition: all .4s ease;
+    -ms-transition: all .4s ease;
+    transition: all .4s ease;
+    cursor: pointer;
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    z-index: 1;
+
+    -webkit-box-shadow: 0px 2px 5px 0px rgba(0,0,0,0.3);
+    -moz-box-shadow: 0px 2px 5px 0px rgba(0,0,0,0.3);
+    box-shadow: 0px 2px 5px 0px rgba(0,0,0,0.3);
+    background: #fcfff4;
+
+    background: -webkit-linear-gradient(top, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+    background: -moz-linear-gradient(top, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+    background: -o-linear-gradient(top, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+    background: -ms-linear-gradient(top, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+    background: linear-gradient(top, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#fcfff4', endColorstr='#b3bead',GradientType=0 );
+}
+
+.slideThree input[type=checkbox]:checked + label {
+    left: 43px;
+}
+
+.slideThree input[type=checkbox] {
+    display: none;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -253,7 +369,7 @@ div.desk-last {
     z-index: 200;
 }
 
-div.desk-close {
+div.button-close {
     position: absolute;
     top: 0;
     right: 0;
