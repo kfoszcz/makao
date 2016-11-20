@@ -7,13 +7,28 @@
     <link rel="stylesheet" type="text/css" href="card-styles.css">
     <script type="text/javascript" src="jquery-3.1.1.min.js"></script>
     <script type="text/javascript" src="game.js"></script>
-    <script type="text/javascript" src="ui.js"></script>
+    <script type="text/javascript" src="tables.js"></script>
     <script type="text/javascript" src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
 <div class="container">
-
+    <div class="header">
+        <h3>Stoły</h3>
+    </div>
+    <div class="user-panel window">
+        <div class="user-panel-name">{{name}}</div>
+        <a class="button" href="/logout">Wyloguj</a>
+    </div>
+    <div id="tables-window" class="window">
+        <table id="tables">
+            <tr class="tables-header">
+                <th class="tables-id">#</th>
+                <th class="tables-item" colspan="4">Gracze</th>
+            </tr>
+        </table>
+        <div id="new-table" class="button">Utwórz stół<div>
+    </div>
 </div>
 
 </body>

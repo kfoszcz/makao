@@ -3,6 +3,15 @@
     src: url('Ubuntu-R.ttf');
 }
 
+.window {
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 1px #c4c4ea solid;
+    border-radius: 5px;
+    color: #c4c4ea;
+    font-size: 0.7em;
+    padding: 5px;
+}
+
 div.login-window form {
     background-color: rgba(0, 0, 0, 0.7);
     border: 1px #c4c4ea solid;
@@ -747,4 +756,61 @@ input#username {
 
 input#username:focus {
     outline: none;
+}
+
+/* tables page styles */
+div.user-panel {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    width: 20%;
+    height: 10%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+}
+
+div.header {
+    width: 100%;
+    text-align: center;
+    padding-top: 10px;
+}
+
+div#tables-window {
+    top: 10%;
+    left: 28%;
+    position: fixed;
+    width: 40%;
+    padding: 2%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    overflow: auto;
+}
+
+div#new-table {
+    width: 150px;
+}
+
+table#tables {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+table#tables td, table#tables th {
+    border: 1px #c4c4ea solid;
+    text-align: center;
+}
+
+table#tables td.tables-id, table#tables th.tables-id {
+    width: 30px;
+}
+
+table#tables tr.tables-row:hover {
+    cursor: pointer;
+    background: #3287a0;
 }

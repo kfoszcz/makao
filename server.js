@@ -39,9 +39,16 @@ app.get('/test/:id', function(req, res){
 
 app.get('/', function(req, res){
 	if (req.session.name)
-		res.redirect('/table/1');
+		res.redirect('/tables');
 	else
 		res.redirect('/login');
+});
+
+app.get('/tables', function(req, res){
+	if (!req.session.name)
+		res.redirect('/login');
+	else
+		res.render('tables', { name: req.session.name });
 });
 
 app.get('/table/:id', function(req, res){
@@ -55,7 +62,7 @@ app.get('/table/:id', function(req, res){
 
 app.get('/login', function(req, res){
 	if (req.session.name)
-		res.redirect('/table/1');
+		res.redirect('/tables');
 	else
 		res.sendFile(__dirname + '/public/login.html');
 });
@@ -68,7 +75,7 @@ app.get('/logout', function(req, res){
 app.post('/login', function(req, res){
 	if (req.body.login) {
 		req.session.name = req.body.login;
-		res.redirect('/table/1');
+		res.redirect('/tables');
 	}
 	else {
 		res.sendFile(__dirname + '/public/login.html');
@@ -80,7 +87,6 @@ http.listen(3000, function(){
 });
 
 var room = new Room(1, 10);
-room.addTable();
 room.addTable();
 
 function executeCmd(tableId, socket, cmd, arg) {
@@ -102,8 +108,8 @@ function executeCmd(tableId, socket, cmd, arg) {
 			var player = table.findPlayerByName(arg);
 			if (player) {
 				table.removePlayer(player.seat);
-				io.to(table.id).emit('chatReceive', 'Użytkownik <b>' + arg + '</b> został wyproszony.');
-				io.to(table.id).emit('updateTable', player.seat, null);
+				tbl.to(table.id).emit('chatReceive', 'Użytkownik <b>' + arg + '</b> został wyproszony.');
+				tbl.to(table.id).emit('updateTable', player.seat, null);
 			}
 			else {
 				socket.emit('chatReceive', 'No such user.');
@@ -178,9 +184,9 @@ function executeCmd(tableId, socket, cmd, arg) {
 			table.game.paused = true;
 			table.kickDisconnected();
 			table.resetReady();
-			io.to(table.id).emit('clearBoard');
-			io.to(table.id).emit('endGame');
-			io.to(table.id).emit('tableStatus', table.getPlayerNames());
+			tbl.to(table.id).emit('clearBoard');
+			tbl.to(table.id).emit('endGame');
+			tbl.to(table.id).emit('tableStatus', table.getPlayerNames());
 			break;
 
 		default:
@@ -194,7 +200,7 @@ function newDeal(tableId, redeal) {
 	var player = null;
 	while (player = table.game.playerIter())
 		player.socket.emit('handReceive', player.hand, player.maxBid, redeal);
-	io.to(table.id).emit('trumpReceive', table.game.topCard);
+	tbl.to(table.id).emit('trumpReceive', table.game.topCard);
 }
 
 function requestMove(tableId) {
@@ -222,7 +228,25 @@ function sendFinalResults(tableId) {
 		player.socket.emit('chatReceive', msgs[table.game.getPlayerPlace(player.seat) - 1]);
 }
 
-io.on('connection', function(socket){
+var tbl = io.of('/table');
+var lobby = io.of('/lobby');
+
+lobby.on('connection', function(socket){
+	socket.on('reconnect', function(){
+		socket.emit('tablesStatus', room.getTablesStatus());
+	});
+
+	socket.on('hello', function(){
+		socket.emit('tablesStatus', room.getTablesStatus());
+	});
+
+	socket.on('newTable', function(){
+		room.addTable();
+		lobby.emit('tablesStatus', room.getTablesStatus());
+	});
+});
+
+tbl.on('connection', function(socket){
 	// emit table status to connecting client
 	// console.log(socket);
 
@@ -239,6 +263,7 @@ io.on('connection', function(socket){
 			ipAddr = 'localhost';
 		console.log(ipAddr);
 		// socket.broadcast.to(table.id).emit('chatReceive', 'Połączenie z ' + ipAddr);
+		table.users++;
 		socket.join(table.id);
 		socket.table = table.id;
 		socket.name = name;
@@ -291,6 +316,7 @@ io.on('connection', function(socket){
 			if (!table.game || !table.game.running) {
 				table.removePlayer(player.seat);
 				socket.broadcast.to(table.id).emit('updateTable', player.seat, null);
+				lobby.emit('updateTable', table.id, player.seat, null);
 			}
 			else {
 				table.game.paused = true;
@@ -300,6 +326,7 @@ io.on('connection', function(socket){
 			}
 		}
 		socket.leave(table.id);
+		table.users--;
 	});
 
 	socket.on('optionsChange', function(options){
@@ -341,8 +368,8 @@ io.on('connection', function(socket){
 
 		table.resetReady();
 
-		io.to(table.id).emit('optionsUpdate', table.options);
-		io.to(table.id).emit('chatReceive', 'Zmieniono ustawienia stołu.');
+		tbl.to(table.id).emit('optionsUpdate', table.options);
+		tbl.to(table.id).emit('chatReceive', 'Zmieniono ustawienia stołu.');
 	});
 
 	socket.on('stand', function(){
@@ -356,6 +383,7 @@ io.on('connection', function(socket){
 			if (!table.game || !table.game.running) {
 				table.removePlayer(player.seat);
 				socket.broadcast.to(table.id).emit('updateTable', player.seat, null);
+				lobby.emit('updateTable', table.id, player.seat, null);
 			}
 		}
 	});
@@ -398,6 +426,7 @@ io.on('connection', function(socket){
 			socket.emit('seatResponse', result, seat, name);
 			if (result) {
 				socket.broadcast.to(table.id).emit('updateTable', seat, name);
+				lobby.emit('updateTable', table.id, seat, name);
 			}
 			for (var i = 0; i < 4; i++)
 				if (table.players[i])
@@ -422,11 +451,11 @@ io.on('connection', function(socket){
 
 		if (table.playersReady()) {
 			// start game
-			io.to(table.id).emit('chatReceive', 'Zaczynamy grę. Powodzenia!');
+			tbl.to(table.id).emit('chatReceive', 'Zaczynamy grę. Powodzenia!');
 			table.game = new Game(table.players, table.options);
 			// console.log(table.game);
 			table.game.init();
-			io.to(table.id).emit('startGame', table.game.options);
+			tbl.to(table.id).emit('startGame', table.game.options);
 			newDeal(table.id);
 			requestMove(table.id);
 		}
@@ -499,14 +528,14 @@ io.on('connection', function(socket){
 				return true;
 			}
 			if (table.game.request & Game.FIRST_ORBIT) {
-				io.to(table.id).emit('tricksInit');
+				tbl.to(table.id).emit('tricksInit');
 			}
 			if (table.game.request & Game.PHASE_CHANGE) {
-				io.to(table.id).emit('updatePhase', table.game.phase);
+				tbl.to(table.id).emit('updatePhase', table.game.phase);
 			}
 			if (table.game.request & Game.ADD_EXTRA) {
-				io.to(table.id).emit('tricksUpdate', table.game.extra, table.game.getExtraPlayer().tricks);
-				io.to(table.id).emit('extraUpdate', table.game.totalExtra);
+				tbl.to(table.id).emit('tricksUpdate', table.game.extra, table.game.getExtraPlayer().tricks);
+				tbl.to(table.id).emit('extraUpdate', table.game.totalExtra);
 				/*if (table.game.showCards.length) {
 					socket.broadcast.to(table.id).emit('trumpUpdate', table.game.showCards[0].suit);
 					socket.broadcast.to(table.id).emit('showCards', table.game.extra, table.game.showCards);
@@ -515,19 +544,19 @@ io.on('connection', function(socket){
 			if (table.game.request & Game.NEW_ORBIT) {
 				locked = true;
 				moveTimeout = 1000;
-				io.to(table.id).emit('tricksUpdate', table.game.best, table.game.getTrickWinner().tricks);
+				tbl.to(table.id).emit('tricksUpdate', table.game.best, table.game.getTrickWinner().tricks);
 				setTimeout(function(){
 					table.game.clearBoard();
-					io.to(table.id).emit('clearBoard');
+					tbl.to(table.id).emit('clearBoard');
 					locked = false;
 				}, 1000);
 			}
 			if (table.game.request & Game.END_GAME) {
-				io.to(table.id).emit('scoresUpdate', table.game.getScores());
+				tbl.to(table.id).emit('scoresUpdate', table.game.getScores());
 				locked = true;
 				table.resetReady();
 				setTimeout(function(){
-					io.to(table.id).emit('endGame');
+					tbl.to(table.id).emit('endGame');
 					sendFinalResults(table.id);
 					table.game.running = false;
 					locked = false;
@@ -536,7 +565,7 @@ io.on('connection', function(socket){
 				return;
 			}
 			if (table.game.request & Game.NEW_DEAL) {
-				io.to(table.id).emit('scoresUpdate', table.game.getScores());
+				tbl.to(table.id).emit('scoresUpdate', table.game.getScores());
 				locked = true;
 				moveTimeout = 2000;
 				setTimeout(function(){
@@ -567,7 +596,7 @@ io.on('connection', function(socket){
 		if (sender)
 			striptags(msg);
 		// console.log('Message from ' + sender + ': ' + msg);
-		io.to(table.id).emit('chatReceive', msg, sender);
+		tbl.to(table.id).emit('chatReceive', msg, sender);
 	});
 
 });
@@ -575,3 +604,9 @@ io.on('connection', function(socket){
 function isBetween(value, min, max) {
 	return (value && Number.isInteger(value) && value >= min && value <= max);
 }
+
+/* remove empty tables every 1 minute */
+setInterval(function(){
+	room.removeEmptyTables();
+	lobby.emit('tablesStatus', room.getTablesStatus());
+}, 60000);

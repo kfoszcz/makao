@@ -791,7 +791,7 @@ $(document).ready(function(){
         mobile = true;
     }
     
-    socket = io();
+    socket = io('/table');
 
     focusChat();
 
@@ -865,7 +865,7 @@ $(document).ready(function(){
             mySeat = place;
             $('#username-request').hide();
             $('#stand-button').show();
-            $('#logout').hide();
+            // $('#leave-button').hide();
             updateAllNames(names);
         }
         else {
@@ -883,7 +883,7 @@ $(document).ready(function(){
     socket.on('moveOK', moveOK);
     $('#stand-button').click(function(){
         $('#stand-button').hide();
-        $('#logout').show();
+        // $('#leave-button').show();
         socket.emit('stand');
         names[mySeat] = null;
         mySeat = 0;

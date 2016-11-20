@@ -31,7 +31,7 @@ Room.prototype.removeTable = function(id) {
 
 Room.prototype.removeEmptyTables = function() {
 	for (var i = 1; i <= this.maxTables; i++)
-		if (this.tables[i] && this.tables[i].playerCount == 0)
+		if (this.tables[i] && this.tables[i].playerCount == 0 && this.tables[i].users == 0)
 			this.removeTable(i);
 };
 

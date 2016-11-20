@@ -2,6 +2,7 @@ function Table(id) {
     this.id = id;
     this.playerCount = 0;
     this.players = [undefined, undefined, undefined, undefined];
+    this.users = 0;
     this.game = null;
     this.options = {
         'deal_start': 1,
