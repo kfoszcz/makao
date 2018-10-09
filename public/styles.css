@@ -173,7 +173,7 @@ body {
     font-family: ubuntu;
     font-size: 2em;
     overflow: hidden;
-    background-image: url('wood.png');
+    background-color: #d18045;
     background-size: 100% 100%;
 }
 

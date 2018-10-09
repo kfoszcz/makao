@@ -12,7 +12,7 @@ Card.prototype.print = function() {
 }
 
 Card.suitOrder = [3, 2, 0, 1];
-Card.suits = ['C', 'D', 'H', 'S'];
+Card.suits = ['c', 'd', 'h', 's'];
 Card.ranks = ['', '', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 
 function compareCard(a, b) {
@@ -28,7 +28,7 @@ Card.sortCards = function(hand) {
 }
 
 Card.fromString = function(str) {
-    return new Card(Card.suits.indexOf(str[0]), Card.ranks.indexOf(str[1]));
+    return new Card(Card.suits.indexOf(str[1]), Card.ranks.indexOf(str[0]));
 }
 
 function shuffleDeck(deck) {

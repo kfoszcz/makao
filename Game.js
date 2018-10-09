@@ -47,12 +47,6 @@ Game.ADD_EXTRA = 16;
 Game.CHOOSE_MARRIAGE = 32;
 Game.PHASE_CHANGE = 64;
 
-Game.testCards = [
-	'HA', 'HQ', 'HK', 'HK', 'HQ', 'HJ', 'H2', 'S5', 'S3', 'S3', 'S2', 'S2',
-	'DA', 'DA', 'DA', 'DA', 'D4', 'D3', 'D2', 'SA', 'SJ', 'SJ', 'S4', 'S2',
-	'H7'
-];
-
 Game.prototype.playerIter = function() {
 	var result = this.players[this.seats[this.iter]];
 	if (++this.iter > this.playersCount) {
@@ -112,8 +106,6 @@ Game.prototype.dealCards = function() {
 	var cardsNeeded = this.playersCount * this.deal + 1;
 	if (this.options.always_shuffle || cardsNeeded > this.deck.size())
 		this.deck.shuffle();
-
-	// this.deck.loadState(Game.testCards, 0);
 
 	for (var i = 0; i < this.playersCount; i++)
 		this.players[this.seats[i]].hand = Card.sortCards(this.deck.draw(this.deal));

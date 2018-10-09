@@ -787,10 +787,16 @@ $(document).ready(function(){
     $('#hand-south').show();
     return;*/
 
+    $('<img/>').attr('src', '/faces/sprite.png').on('load', (function(){
+        $(this).remove();
+    }));
+
     if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
         mobile = true;
     }
     
+    $('body').css('background-image', 'url(wood.png)');
+
     socket = io('/table');
 
     focusChat();

@@ -28,7 +28,6 @@ app.engine('handlebars', exphbs());
 app.set('view engine', 'handlebars');
 
 app.use(express.static(__dirname + '/public'));
-app.use(express.static(__dirname + '/public/img'));
 
 app.get('/test/:id', function(req, res){
 	if (isNaN(req.params.id))
@@ -116,6 +115,7 @@ function executeCmd(tableId, socket, cmd, arg) {
 			}
 			break;
 
+		// this should be done in db as user role
 		case 'admin':
 			var pass = '7012';
 			if (pass === arg) {
